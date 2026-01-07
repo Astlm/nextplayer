@@ -2,6 +2,8 @@ package dev.anilbeesetti.nextplayer.core.media.sync
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.anilbeesetti.nextplayer.core.common.Dispatcher
@@ -20,10 +22,10 @@ import io.github.anilbeesetti.nextlib.mediainfo.VideoStream
 import java.io.File
 import java.io.FileOutputStream
 import javax.inject.Inject
+import kotlin.text.substringBeforeLast
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -34,25 +36,39 @@ class LocalMediaInfoSynchronizer @Inject constructor(
     @Dispatcher(NextDispatchers.Default) private val dispatcher: CoroutineDispatcher,
 ) : MediaInfoSynchronizer {
 
-    private val media = MutableSharedFlow<Uri>()
-
-    override suspend fun addMedia(uri: Uri) = media.emit(uri)
-
-    private suspend fun sync(): Unit = withContext(dispatcher) {
-        media.collect { mediumUri ->
-            val medium = mediumDao.getWithInfo(mediumUri.toString()) ?: return@collect
+    override fun sync(uri: Uri) {
+        applicationScope.launch(dispatcher) {
+            val medium = mediumDao.getWithInfo(uri.toString()) ?: return@launch
             if (medium.mediumEntity.thumbnailPath?.let { File(it) }?.exists() == true) {
-                return@collect
+                return@launch
             }
 
             val mediaInfo = runCatching {
-                MediaInfoBuilder().from(context = context, uri = mediumUri).build() ?: throw NullPointerException()
+                MediaInfoBuilder().from(context = context, uri = uri).build() ?: throw NullPointerException()
             }.onFailure { e ->
                 NextLogger.e(TAG, "MediaInfoBuilder exception", e)
-            }.getOrNull() ?: return@collect
+            }.getOrNull() ?: return@launch
 
-            val thumbnail = runCatching { mediaInfo.getFrame() }.getOrNull()
+            val mediaMetadataRetriever = MediaMetadataRetriever().apply {
+                setDataSource(context, uri)
+            }
+
+            val thumbnail = runCatching {
+                listOf(
+                    ".jpg",
+                    ".jpeg",
+                    ".png",
+                ).firstOrNull { imageExtension ->
+                    File(medium.mediumEntity.path.substringBeforeLast(".") + ".$imageExtension").exists()
+                }?.let {
+                    BitmapFactory.decodeFile(medium.mediumEntity.path.substringBeforeLast(".") + ".$it")
+                }
+            }.getOrNull()
+                ?: runCatching { mediaMetadataRetriever.embeddedPicture?.toBitmap() }.getOrNull()
+                ?: runCatching { mediaMetadataRetriever.getFrameAtTime(0) }.getOrNull()
+                ?: runCatching { mediaInfo.getFrame() }.getOrNull()
             mediaInfo.release()
+            mediaMetadataRetriever.release()
 
             val videoStreamInfo = mediaInfo.videoStream?.toVideoStreamInfoEntity(medium.mediumEntity.uriString)
             val audioStreamsInfo = mediaInfo.audioStreams.map {
@@ -77,10 +93,6 @@ class LocalMediaInfoSynchronizer @Inject constructor(
             audioStreamsInfo.onEach { mediumDao.upsertAudioStreamInfo(it) }
             subtitleStreamsInfo.onEach { mediumDao.upsertSubtitleStreamInfo(it) }
         }
-    }
-
-    init {
-        applicationScope.launch { sync() }
     }
 
     companion object {
@@ -135,7 +147,11 @@ suspend fun Bitmap.saveTo(
             compress(Bitmap.CompressFormat.JPEG, quality, fos)
         }
     } catch (e: Exception) {
-        NextLogger.e("MediaInfoSynchronizer", "Failed to save thumbnail", e)
+        NextLogger.e("MediaInfoSynchronizer", "Failed to save thumbnail file=$thumbFile", e)
     }
     return@withContext if (thumbFile.exists()) thumbFile.path else null
+}
+
+fun ByteArray.toBitmap(): Bitmap? {
+    return BitmapFactory.decodeByteArray(this, 0, this.size)
 }

@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
@@ -16,6 +17,7 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.TypedValue
+import androidx.core.graphics.drawable.toBitmapOrNull
 import androidx.core.text.isDigitsOnly
 import dev.anilbeesetti.nextplayer.core.common.logging.NextLogger
 import java.io.BufferedInputStream
@@ -410,4 +412,8 @@ fun Context.getStorageVolumes() = try {
     } ?: listOf(Environment.getExternalStorageDirectory())
 } catch (e: Exception) {
     listOf(Environment.getExternalStorageDirectory())
+}
+
+fun Context.appIcon(): Bitmap? {
+    return packageManager.getApplicationInfo(packageName, 0).loadIcon(packageManager)?.toBitmapOrNull()
 }
