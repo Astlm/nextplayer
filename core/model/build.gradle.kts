@@ -5,6 +5,11 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
+java {
+    sourceCompatibility = JavaVersion.toVersion(libs.versions.android.jvm.get().toInt())
+    targetCompatibility = JavaVersion.toVersion(libs.versions.android.jvm.get().toInt())
+}
+
 tasks.withType<KotlinCompile> {
     kotlinOptions {
         jvmTarget = libs.versions.android.jvm.get()
