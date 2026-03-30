@@ -9,6 +9,10 @@ class AppPreferencesDataSource @Inject constructor(
     private val appPreferences: DataStore<ApplicationPreferences>,
 ) : PreferencesDataSource<ApplicationPreferences> {
 
+    companion object {
+        private const val TAG = "AppPreferencesDataSource"
+    }
+
     override val preferences = appPreferences.data
 
     override suspend fun update(
@@ -17,7 +21,7 @@ class AppPreferencesDataSource @Inject constructor(
         try {
             appPreferences.updateData(transform)
         } catch (ioException: Exception) {
-            NextLogger.e("NextPlayerPreferences", "Failed to update app preferences", ioException)
+            NextLogger.e(TAG, "Failed to update app preferences", ioException)
         }
     }
 }

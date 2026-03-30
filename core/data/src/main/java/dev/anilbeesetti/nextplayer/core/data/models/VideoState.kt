@@ -12,4 +12,6 @@ data class VideoState(
     val playbackSpeed: Float?,
     val externalSubs: List<Uri>,
     val videoScale: Float,
+    val subtitleDelayMilliseconds: Long,
+    val subtitleSpeed: Float,
 )

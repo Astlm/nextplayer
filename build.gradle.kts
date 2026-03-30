@@ -1,4 +1,3 @@
-import com.mikepenz.aboutlibraries.plugin.DuplicateMode
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 
@@ -8,15 +7,14 @@ plugins {
     alias(libs.plugins.androidLibrary) apply false
     alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.hilt) apply false
-    alias(libs.plugins.kotlinAndroid) apply false
     alias(libs.plugins.kotlinJvm) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.ktlint) apply false
 }
 
 subprojects {
-    apply(plugin = "org.jlleitschuh.gradle.ktlint")
-    apply(plugin = "com.mikepenz.aboutlibraries.plugin")
+    apply(plugin = rootProject.libs.plugins.ktlint.get().pluginId)
+    apply(plugin = rootProject.libs.plugins.aboutLibraries.get().pluginId)
 
     configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
         android.set(true)
@@ -25,9 +23,9 @@ subprojects {
     }
 
     configure<com.mikepenz.aboutlibraries.plugin.AboutLibrariesExtension> {
-        // Remove the "generated" timestamp to allow for reproducible builds
-        excludeFields = arrayOf("generated")
-        duplicationMode = DuplicateMode.MERGE
+        export {
+            excludeFields.addAll("generated")
+        }
     }
 }
 

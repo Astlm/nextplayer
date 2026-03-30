@@ -1,4 +1,4 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinJvm)
@@ -10,9 +10,9 @@ java {
     targetCompatibility = JavaVersion.toVersion(libs.versions.android.jvm.get().toInt())
 }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = libs.versions.android.jvm.get()
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.fromTarget(libs.versions.android.jvm.get()))
     }
 }
 

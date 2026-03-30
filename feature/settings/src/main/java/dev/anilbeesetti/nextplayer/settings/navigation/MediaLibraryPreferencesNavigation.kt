@@ -3,8 +3,8 @@ package dev.anilbeesetti.nextplayer.settings.navigation
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
+import androidx.navigation.compose.composable
 import androidx.navigation.navOptions
-import dev.anilbeesetti.nextplayer.core.ui.designsystem.animatedComposable
 import dev.anilbeesetti.nextplayer.settings.screens.medialibrary.FolderPreferencesScreen
 import dev.anilbeesetti.nextplayer.settings.screens.medialibrary.MediaLibraryPreferencesScreen
 
@@ -22,17 +22,19 @@ fun NavController.navigateToFolderPreferencesScreen(navOptions: NavOptions? = na
 fun NavGraphBuilder.mediaLibraryPreferencesScreen(
     onNavigateUp: () -> Unit,
     onFolderSettingClick: () -> Unit,
+    onThumbnailSettingClick: () -> Unit,
 ) {
-    animatedComposable(route = mediaLibraryPreferencesNavigationRoute) {
+    composable(route = mediaLibraryPreferencesNavigationRoute) {
         MediaLibraryPreferencesScreen(
             onNavigateUp = onNavigateUp,
             onFolderSettingClick = onFolderSettingClick,
+            onThumbnailSettingClick = onThumbnailSettingClick,
         )
     }
 }
 
 fun NavGraphBuilder.folderPreferencesScreen(onNavigateUp: () -> Unit) {
-    animatedComposable(route = folderPreferencesNavigationRoute) {
+    composable(route = folderPreferencesNavigationRoute) {
         FolderPreferencesScreen(onNavigateUp = onNavigateUp)
     }
 }

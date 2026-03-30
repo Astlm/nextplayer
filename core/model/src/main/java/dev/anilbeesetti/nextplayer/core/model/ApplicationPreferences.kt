@@ -10,7 +10,6 @@ data class ApplicationPreferences(
     val useHighContrastDarkTheme: Boolean = false,
     val useDynamicColors: Boolean = true,
     val markLastPlayedMedia: Boolean = true,
-    val showFloatingPlayButton: Boolean = true,
     val excludeFolders: List<String> = emptyList(),
     val mediaViewMode: MediaViewMode = MediaViewMode.FOLDERS,
     val mediaLayoutMode: MediaLayoutMode = MediaLayoutMode.LIST,
@@ -23,4 +22,13 @@ data class ApplicationPreferences(
     val showSizeField: Boolean = false,
     val showThumbnailField: Boolean = true,
     val showPlayedProgress: Boolean = true,
-)
+
+    // Thumbnail generation
+    val thumbnailGenerationStrategy: ThumbnailGenerationStrategy = ThumbnailGenerationStrategy.FRAME_AT_PERCENTAGE,
+    val thumbnailFramePosition: Float = DEFAULT_THUMBNAIL_FRAME_POSITION,
+) {
+
+    companion object {
+        const val DEFAULT_THUMBNAIL_FRAME_POSITION = 0.33f
+    }
+}

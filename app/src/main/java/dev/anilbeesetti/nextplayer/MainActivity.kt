@@ -7,6 +7,9 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +36,7 @@ import dev.anilbeesetti.nextplayer.core.media.services.MediaService
 import dev.anilbeesetti.nextplayer.core.media.sync.MediaSynchronizer
 import dev.anilbeesetti.nextplayer.core.model.ThemeConfig
 import dev.anilbeesetti.nextplayer.core.ui.theme.NextPlayerTheme
-import dev.anilbeesetti.nextplayer.navigation.MEDIA_ROUTE
+import dev.anilbeesetti.nextplayer.navigation.MediaRootRoute
 import dev.anilbeesetti.nextplayer.navigation.mediaNavGraph
 import dev.anilbeesetti.nextplayer.navigation.settingsNavGraph
 import javax.inject.Inject
@@ -48,7 +51,7 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var mediaService: MediaService
 
-    private val viewModel: MainActivityViewModel by viewModels()
+    private val viewModel: MainViewModel by viewModels()
 
     @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,15 +68,33 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        installSplashScreen()
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
-        )
+        installSplashScreen().setKeepOnScreenCondition {
+            when (uiState) {
+                MainActivityUiState.Loading -> true
+                is MainActivityUiState.Success -> false
+            }
+        }
 
         setContent {
+            val shouldUseDarkTheme = shouldUseDarkTheme(uiState = uiState)
+
+            LaunchedEffect(shouldUseDarkTheme) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(
+                        lightScrim = Color.TRANSPARENT,
+                        darkScrim = Color.TRANSPARENT,
+                        detectDarkMode = { shouldUseDarkTheme },
+                    ),
+                    navigationBarStyle = SystemBarStyle.auto(
+                        lightScrim = Color.TRANSPARENT,
+                        darkScrim = Color.TRANSPARENT,
+                        detectDarkMode = { shouldUseDarkTheme },
+                    ),
+                )
+            }
+
             NextPlayerTheme(
-                darkTheme = shouldUseDarkTheme(uiState = uiState),
+                darkTheme = shouldUseDarkTheme,
                 highContrastDarkTheme = shouldUseHighContrastDarkTheme(uiState = uiState),
                 dynamicColor = shouldUseDynamicTheming(uiState = uiState),
             ) {
@@ -97,7 +118,45 @@ class MainActivity : ComponentActivity() {
 
                     NavHost(
                         navController = mainNavController,
-                        startDestination = MEDIA_ROUTE,
+                        startDestination = MediaRootRoute,
+                        enterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                animationSpec = tween(
+                                    durationMillis = 200,
+                                    easing = LinearEasing,
+                                ),
+                            )
+                        },
+                        exitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                animationSpec = tween(
+                                    durationMillis = 200,
+                                    easing = LinearEasing,
+                                ),
+                                targetOffset = { fullOffset -> (fullOffset * 0.3f).toInt() },
+                            )
+                        },
+                        popEnterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(
+                                    durationMillis = 200,
+                                    easing = LinearEasing,
+                                ),
+                                initialOffset = { fullOffset -> (fullOffset * 0.3f).toInt() },
+                            )
+                        },
+                        popExitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(
+                                    durationMillis = 200,
+                                    easing = LinearEasing,
+                                ),
+                            )
+                        },
                     ) {
                         mediaNavGraph(
                             context = this@MainActivity,
@@ -116,7 +175,7 @@ class MainActivity : ComponentActivity() {
  * current system context.
  */
 @Composable
-private fun shouldUseDarkTheme(
+fun shouldUseDarkTheme(
     uiState: MainActivityUiState,
 ): Boolean = when (uiState) {
     MainActivityUiState.Loading -> isSystemInDarkTheme()
@@ -139,7 +198,7 @@ fun shouldUseHighContrastDarkTheme(
  * Returns `true` if the dynamic color is disabled, as a function of the [uiState].
  */
 @Composable
-private fun shouldUseDynamicTheming(
+fun shouldUseDynamicTheming(
     uiState: MainActivityUiState,
 ): Boolean = when (uiState) {
     MainActivityUiState.Loading -> false

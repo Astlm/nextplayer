@@ -1,13 +1,13 @@
 package dev.anilbeesetti.nextplayer.core.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -19,57 +19,51 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.anilbeesetti.nextplayer.core.ui.designsystem.NextIcons
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PreferenceItem(
-    title: String,
     modifier: Modifier = Modifier,
+    title: String,
     description: String? = null,
     icon: ImageVector? = null,
     enabled: Boolean,
-    content: @Composable () -> Unit = {},
+    onClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null,
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
+    trailingContent: @Composable () -> Unit = {},
 ) {
-    ListItemComponent(
-        leadingContent = {
-            icon?.let {
+    NextSegmentedListItem(
+        modifier = modifier,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        enabled = enabled,
+        isFirstItem = isFirstItem,
+        isLastItem = isLastItem,
+        leadingContent = icon?.let {
+            {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier
-                        .padding(horizontal = 8.dp)
-                        .size(24.dp),
-                    tint = MaterialTheme.colorScheme.secondary.applyAlpha(enabled),
+                    modifier = Modifier.size(24.dp),
                 )
             }
         },
-        headlineContent = {
-            Text(
-                text = title,
-                maxLines = 1,
-                style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
-                color = LocalContentColor.current.applyAlpha(enabled),
-            )
-        },
-        supportingContent = {
-            description?.let {
-                Text(
-                    text = it,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = LocalContentColor.current.applyAlpha(enabled),
-                    modifier = Modifier.padding(top = 2.dp),
-                )
+        supportingContent = description?.let {
+            {
+                Text(text = description)
             }
         },
-        trailingContent = content,
-        modifier = modifier.padding(vertical = 8.dp),
+        content = {
+            Text(text = title)
+        },
+        trailingContent = trailingContent,
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SelectablePreference(
     title: String,
@@ -78,9 +72,16 @@ fun SelectablePreference(
     selected: Boolean = false,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {},
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
 ) {
-    ListItemComponent(
-        headlineContent = {
+    NextSegmentedListItem(
+        modifier = modifier,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        isFirstItem = isFirstItem,
+        isLastItem = isLastItem,
+        content = {
             Text(
                 text = title,
                 maxLines = 1,
@@ -93,7 +94,6 @@ fun SelectablePreference(
             description?.let {
                 Text(
                     text = it,
-                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         textDecoration = if (selected) TextDecoration.LineThrough else TextDecoration.None,
@@ -108,13 +108,47 @@ fun SelectablePreference(
                 onCheckedChange = null,
             )
         },
-        modifier = modifier
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick,
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun SingleSelectablePreference(
+    title: String,
+    modifier: Modifier = Modifier,
+    description: String? = null,
+    selected: Boolean = false,
+    onClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null,
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
+) {
+    NextSegmentedListItem(
+        modifier = modifier,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        isFirstItem = isFirstItem,
+        isLastItem = isLastItem,
+        content = {
+            Text(
+                text = title,
+                maxLines = 1,
             )
-            .padding(start = 10.dp)
-            .padding(vertical = 2.dp),
+        },
+        supportingContent = {
+            description?.let {
+                Text(
+                    text = it,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        },
+        leadingContent = {
+            RadioButton(
+                selected = selected,
+                onClick = null,
+            )
+        },
     )
 }
 

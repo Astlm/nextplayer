@@ -1,28 +1,24 @@
 package dev.anilbeesetti.nextplayer.settings.screens.cache
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,12 +28,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.anilbeesetti.nextplayer.core.common.Utils
 import dev.anilbeesetti.nextplayer.core.common.cache.StreamCacheStorage
@@ -45,19 +40,19 @@ import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.StreamCacheClearPolicy
 import dev.anilbeesetti.nextplayer.core.ui.R
 import dev.anilbeesetti.nextplayer.core.ui.components.ClickablePreferenceItem
+import dev.anilbeesetti.nextplayer.core.ui.components.ListSectionTitle
 import dev.anilbeesetti.nextplayer.core.ui.components.NextDialogWithDoneCancelAndResetButtons
 import dev.anilbeesetti.nextplayer.core.ui.components.NextTopAppBar
 import dev.anilbeesetti.nextplayer.core.ui.components.RadioTextButton
 import dev.anilbeesetti.nextplayer.core.ui.designsystem.NextIcons
 import dev.anilbeesetti.nextplayer.settings.composables.OptionsDialog
-import dev.anilbeesetti.nextplayer.settings.composables.PreferenceSubtitle
 import dev.anilbeesetti.nextplayer.settings.extensions.name
 import kotlin.math.max
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CachePreferencesScreen(
     onNavigateUp: () -> Unit,
@@ -65,8 +60,6 @@ fun CachePreferencesScreen(
 ) {
     val preferences by viewModel.preferencesFlow.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    val scrollBehaviour = TopAppBarDefaults.pinnedScrollBehavior()
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -81,17 +74,11 @@ fun CachePreferencesScreen(
     }
 
     Scaffold(
-        modifier = Modifier
-            .nestedScroll(scrollBehaviour.nestedScrollConnection),
         topBar = {
             NextTopAppBar(
                 title = stringResource(id = R.string.cache),
-                scrollBehavior = scrollBehaviour,
                 navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateUp,
-                        modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Start)),
-                    ) {
+                    FilledTonalIconButton(onClick = onNavigateUp) {
                         Icon(
                             imageVector = NextIcons.ArrowBack,
                             contentDescription = stringResource(id = R.string.navigate_up),
@@ -100,43 +87,47 @@ fun CachePreferencesScreen(
                 },
             )
         },
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .verticalScroll(state = rememberScrollState())
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp),
         ) {
-            PreferenceSubtitle(text = stringResource(id = R.string.stream_cache_clear_policy))
-            CacheClearPolicySetting(
-                currentPolicy = preferences.streamCacheClearPolicy,
-                onClick = { viewModel.showDialog(CachePreferenceDialog.CacheClearPolicyDialog) },
-            )
-
-            ClearCacheSetting(
-                cacheSizeText = cacheSizeText,
-                isClearingCache = isClearingCache,
-                onClick = {
-                    if (isClearingCache) return@ClearCacheSetting
-                    isClearingCache = true
-                    coroutineScope.launch {
-                        withContext(Dispatchers.IO) {
-                            StreamCacheStorage.clear(context)
+            ListSectionTitle(text = stringResource(id = R.string.cache))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                CacheClearPolicySetting(
+                    currentPolicy = preferences.streamCacheClearPolicy,
+                    onClick = { viewModel.showDialog(CachePreferenceDialog.CacheClearPolicyDialog) },
+                )
+                ClearCacheSetting(
+                    cacheSizeText = cacheSizeText,
+                    isClearingCache = isClearingCache,
+                    onClick = {
+                        if (isClearingCache) return@ClearCacheSetting
+                        isClearingCache = true
+                        coroutineScope.launch {
+                            withContext(Dispatchers.IO) {
+                                StreamCacheStorage.clear(context)
+                            }
+                            cacheSizeText = withContext(Dispatchers.IO) {
+                                Utils.formatFileSize(StreamCacheStorage.sizeBytes(context))
+                            }
+                            isClearingCache = false
                         }
-                        cacheSizeText = withContext(Dispatchers.IO) {
-                            Utils.formatFileSize(StreamCacheStorage.sizeBytes(context))
-                        }
-                        isClearingCache = false
-                    }
-                },
-            )
+                    },
+                )
+            }
 
-            PreferenceSubtitle(text = stringResource(id = R.string.buffering))
-            BufferSettingsPreference(
-                preferences = preferences,
-                onClick = { viewModel.showDialog(CachePreferenceDialog.BufferSettingsDialog) },
-            )
+            ListSectionTitle(text = stringResource(id = R.string.buffering))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                BufferSettingsPreference(
+                    preferences = preferences,
+                    onClick = { viewModel.showDialog(CachePreferenceDialog.BufferSettingsDialog) },
+                )
+            }
         }
 
         uiState.showDialog?.let { showDialog ->
@@ -149,7 +140,7 @@ fun CachePreferencesScreen(
                         items(StreamCacheClearPolicy.entries.toTypedArray()) { policy ->
                             RadioTextButton(
                                 text = policy.name(),
-                                selected = (policy == preferences.streamCacheClearPolicy),
+                                selected = policy == preferences.streamCacheClearPolicy,
                                 onClick = {
                                     viewModel.updateStreamCacheClearPolicy(policy)
                                     viewModel.hideDialog()
@@ -220,7 +211,7 @@ private fun BufferSettingsPreference(
     val concurrency = preferences.segmentConcurrentDownloads.coerceAtLeast(1)
     ClickablePreferenceItem(
         title = stringResource(R.string.buffer_settings),
-        description = "${minSec}s–${maxSec}s, ${chunkKb}KB, x$concurrency",
+        description = "${minSec}s-${maxSec}s, ${chunkKb}KB, x$concurrency",
         icon = NextIcons.Settings,
         onClick = onClick,
     )
