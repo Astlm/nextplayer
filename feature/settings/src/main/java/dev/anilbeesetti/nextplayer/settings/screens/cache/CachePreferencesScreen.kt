@@ -15,6 +15,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -97,14 +98,16 @@ fun CachePreferencesScreen(
                 .padding(horizontal = 16.dp),
         ) {
             ListSectionTitle(text = stringResource(id = R.string.cache))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
                 CacheClearPolicySetting(
                     currentPolicy = preferences.streamCacheClearPolicy,
                     onClick = { viewModel.showDialog(CachePreferenceDialog.CacheClearPolicyDialog) },
+                    isFirstItem = true,
                 )
                 ClearCacheSetting(
                     cacheSizeText = cacheSizeText,
                     isClearingCache = isClearingCache,
+                    isLastItem = true,
                     onClick = {
                         if (isClearingCache) return@ClearCacheSetting
                         isClearingCache = true
@@ -122,9 +125,11 @@ fun CachePreferencesScreen(
             }
 
             ListSectionTitle(text = stringResource(id = R.string.buffering))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
                 BufferSettingsPreference(
                     preferences = preferences,
+                    isFirstItem = true,
+                    isLastItem = true,
                     onClick = { viewModel.showDialog(CachePreferenceDialog.BufferSettingsDialog) },
                 )
             }
@@ -175,12 +180,16 @@ fun CachePreferencesScreen(
 @Composable
 private fun CacheClearPolicySetting(
     currentPolicy: StreamCacheClearPolicy,
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
     onClick: () -> Unit,
 ) {
     ClickablePreferenceItem(
         title = stringResource(R.string.stream_cache_clear_policy),
         description = currentPolicy.name(),
         icon = NextIcons.Settings,
+        isFirstItem = isFirstItem,
+        isLastItem = isLastItem,
         onClick = onClick,
     )
 }
@@ -189,6 +198,8 @@ private fun CacheClearPolicySetting(
 private fun ClearCacheSetting(
     cacheSizeText: String,
     isClearingCache: Boolean,
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
     onClick: () -> Unit,
 ) {
     ClickablePreferenceItem(
@@ -197,12 +208,16 @@ private fun ClearCacheSetting(
         icon = NextIcons.Delete,
         onClick = onClick,
         enabled = !isClearingCache,
+        isFirstItem = isFirstItem,
+        isLastItem = isLastItem,
     )
 }
 
 @Composable
 private fun BufferSettingsPreference(
     preferences: PlayerPreferences,
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
     onClick: () -> Unit,
 ) {
     val minSec = preferences.minBufferMs / 1000
@@ -213,6 +228,8 @@ private fun BufferSettingsPreference(
         title = stringResource(R.string.buffer_settings),
         description = "${minSec}s-${maxSec}s, ${chunkKb}KB, x$concurrency",
         icon = NextIcons.Settings,
+        isFirstItem = isFirstItem,
+        isLastItem = isLastItem,
         onClick = onClick,
     )
 }

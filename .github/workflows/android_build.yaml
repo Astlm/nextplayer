@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build apk and run tests
+    name: Build debug and release apks, then run tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -28,8 +28,8 @@ jobs:
           validate-wrappers: true
           gradle-home-cache-cleanup: true
 
-      - name: Build Project with gradle
-        run: ./gradlew assembleDebug
+      - name: Build Debug and Release APKs
+        run: ./gradlew assembleDebug assembleRelease
 
       - name: Run Local Tests
         run: ./gradlew test
@@ -63,6 +63,12 @@ jobs:
         with:
           name: nextplayer-x86-debug.apk
           path: ./app/build/outputs/apk/debug/app-x86-debug.apk
+
+      - name: Upload release APKs
+        uses: actions/upload-artifact@v6
+        with:
+          name: nextplayer-release-apks
+          path: ./app/build/outputs/apk/release/*.apk
 
       - name: Upload build reports
         if: always()
