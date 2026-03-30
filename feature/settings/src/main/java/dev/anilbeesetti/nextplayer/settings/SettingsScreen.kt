@@ -61,8 +61,8 @@ fun SettingsScreen(
                     description = stringResource(id = row.descriptionResId),
                     icon = row.icon,
                     onClick = { onItemClick(row.setting) },
-                    index = index,
-                    count = settingRows.size,
+                    isFirstItem = index == 0,
+                    isLastItem = index == settingRows.lastIndex,
                 )
             }
         }
@@ -74,9 +74,11 @@ enum class Setting {
     MEDIA_LIBRARY,
     PLAYER,
     CACHE,
+    GESTURES,
     DECODER,
     AUDIO,
     SUBTITLE,
+    GENERAL,
     ABOUT,
 }
 
@@ -110,6 +112,12 @@ private enum class SettingRow(
         icon = NextIcons.Cache,
         setting = Setting.CACHE,
     ),
+    GESTURES(
+        titleResId = R.string.gestures_name,
+        descriptionResId = R.string.gestures_description,
+        icon = NextIcons.SwipeHorizontal,
+        setting = Setting.GESTURES,
+    ),
     DECODER(
         titleResId = R.string.decoder,
         descriptionResId = R.string.decoder_desc,
@@ -127,6 +135,12 @@ private enum class SettingRow(
         descriptionResId = R.string.subtitle_desc,
         icon = NextIcons.Subtitle,
         setting = Setting.SUBTITLE,
+    ),
+    GENERAL(
+        titleResId = R.string.general_name,
+        descriptionResId = R.string.general_description,
+        icon = NextIcons.ExtraSettings,
+        setting = Setting.GENERAL,
     ),
     ABOUT(
         titleResId = R.string.about_name,

@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var mediaService: MediaService
 
-    private val viewModel: MainActivityViewModel by viewModels()
+    private val viewModel: MainViewModel by viewModels()
 
     @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,14 +74,27 @@ class MainActivity : ComponentActivity() {
                 is MainActivityUiState.Success -> false
             }
         }
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
-        )
 
         setContent {
+            val shouldUseDarkTheme = shouldUseDarkTheme(uiState = uiState)
+
+            LaunchedEffect(shouldUseDarkTheme) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(
+                        lightScrim = Color.TRANSPARENT,
+                        darkScrim = Color.TRANSPARENT,
+                        detectDarkMode = { shouldUseDarkTheme },
+                    ),
+                    navigationBarStyle = SystemBarStyle.auto(
+                        lightScrim = Color.TRANSPARENT,
+                        darkScrim = Color.TRANSPARENT,
+                        detectDarkMode = { shouldUseDarkTheme },
+                    ),
+                )
+            }
+
             NextPlayerTheme(
-                darkTheme = shouldUseDarkTheme(uiState = uiState),
+                darkTheme = shouldUseDarkTheme,
                 highContrastDarkTheme = shouldUseHighContrastDarkTheme(uiState = uiState),
                 dynamicColor = shouldUseDynamicTheming(uiState = uiState),
             ) {
@@ -162,7 +175,7 @@ class MainActivity : ComponentActivity() {
  * current system context.
  */
 @Composable
-private fun shouldUseDarkTheme(
+fun shouldUseDarkTheme(
     uiState: MainActivityUiState,
 ): Boolean = when (uiState) {
     MainActivityUiState.Loading -> isSystemInDarkTheme()
@@ -185,7 +198,7 @@ fun shouldUseHighContrastDarkTheme(
  * Returns `true` if the dynamic color is disabled, as a function of the [uiState].
  */
 @Composable
-private fun shouldUseDynamicTheming(
+fun shouldUseDynamicTheming(
     uiState: MainActivityUiState,
 ): Boolean = when (uiState) {
     MainActivityUiState.Loading -> false

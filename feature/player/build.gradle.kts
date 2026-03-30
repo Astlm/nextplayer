@@ -2,7 +2,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.androidLibrary)
-    alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.composeCompiler)
@@ -21,15 +20,15 @@ android {
         targetCompatibility = JavaVersion.toVersion(libs.versions.android.jvm.get().toInt())
     }
 
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.fromTarget(libs.versions.android.jvm.get()))
-        }
-    }
-
     buildFeatures {
         viewBinding = true
         compose = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.fromTarget(libs.versions.android.jvm.get()))
     }
 }
 
@@ -54,6 +53,11 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.icons)
     implementation(libs.androidx.constraintlayout)
+
+    implementation(libs.coil.compose)
+
+    // Reorderable list for drag-and-drop
+    implementation(libs.reorderable)
 
     // Media3
     implementation(libs.androidx.media3.common)

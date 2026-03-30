@@ -3,6 +3,9 @@ package dev.anilbeesetti.nextplayer
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
 import dagger.hilt.android.HiltAndroidApp
 import dev.anilbeesetti.nextplayer.core.common.cache.StreamCacheStorage
 import dev.anilbeesetti.nextplayer.core.common.di.ApplicationScope
@@ -10,6 +13,8 @@ import dev.anilbeesetti.nextplayer.core.common.logging.NextLogger
 import dev.anilbeesetti.nextplayer.core.data.repository.PreferencesRepository
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.StreamCacheClearPolicy
+import dev.anilbeesetti.nextplayer.crash.CrashActivity
+import dev.anilbeesetti.nextplayer.crash.GlobalExceptionHandler
 import dev.anilbeesetti.nextplayer.feature.player.service.PlayerService
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
@@ -21,10 +26,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @HiltAndroidApp
-class NextPlayerApplication : Application() {
+class NextPlayerApplication : Application(), SingletonImageLoader.Factory {
 
     @Inject
     lateinit var preferencesRepository: PreferencesRepository
+
+    @Inject
+    lateinit var imageLoader: ImageLoader
 
     @Inject
     @ApplicationScope
@@ -36,10 +44,9 @@ class NextPlayerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         NextLogger.init(this)
+        Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(applicationContext, CrashActivity::class.java))
 
-        // Preloading updated preferences to ensure that the player uses the latest preferences set by the user.
-        // This resolves the issue where player use default preferences upon launching the app from a cold start.
-        // See [the corresponding issue for more info](https://github.com/anilbeesetti/nextplayer/issues/392)
+        // Preload preferences so player/service startup uses the latest user-configured values.
         applicationScope.launch {
             preferencesRepository.applicationPreferences.first()
             latestPlayerPreferences = preferencesRepository.playerPreferences.first()
@@ -48,6 +55,8 @@ class NextPlayerApplication : Application() {
 
         registerStreamCacheCleanupOnAppExit()
     }
+
+    override fun newImageLoader(context: PlatformContext): ImageLoader = imageLoader
 
     private fun registerStreamCacheCleanupOnAppExit() {
         val startedActivities = AtomicInteger(0)

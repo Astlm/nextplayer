@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Badge
@@ -27,7 +28,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mikepenz.aboutlibraries.Libs
-import com.mikepenz.aboutlibraries.ui.compose.util.author
 import com.mikepenz.aboutlibraries.util.withContext
 import dev.anilbeesetti.nextplayer.core.ui.R
 import dev.anilbeesetti.nextplayer.core.ui.components.NextSegmentedListItem
@@ -85,21 +85,29 @@ fun LibrariesScreen(
                         }
                     },
                     supportingContent = {
-                        Column {
-                            Text(text = library.author)
-                            FlowRow {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = library.developers.takeIf { it.isNotEmpty() }
+                                    ?.mapNotNull { it.name }
+                                    ?.joinToString(", ")
+                                    ?: library.organization?.name ?: "",
+                            )
+                            FlowRow(
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
                                 library.licenses.forEach {
                                     Badge(
                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                     ) {
-                                        Text(text = it.name)
+                                        Text(text = it.name, modifier = Modifier.padding(horizontal = 2.dp))
                                     }
                                 }
                             }
                         }
                     },
-                    index = index,
-                    count = libs.libraries.size,
+                    isFirstItem = index == 0,
+                    isLastItem = index == libs.libraries.lastIndex,
                     onClick = {
                         library.website?.takeIf { it.isNotBlank() }?.let {
                             uriHandler.openUriOrShowToast(uri = it, context = context)

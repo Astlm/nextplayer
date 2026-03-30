@@ -1,19 +1,18 @@
 package dev.anilbeesetti.nextplayer.settings.screens.player
 
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.anilbeesetti.nextplayer.core.common.extensions.round
 import dev.anilbeesetti.nextplayer.core.data.repository.PreferencesRepository
 import dev.anilbeesetti.nextplayer.core.model.ControlButtonsPosition
-import dev.anilbeesetti.nextplayer.core.model.DoubleTapGesture
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.Resume
 import dev.anilbeesetti.nextplayer.core.model.ScreenOrientation
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -22,24 +21,45 @@ class PlayerPreferencesViewModel @Inject constructor(
     private val preferencesRepository: PreferencesRepository,
 ) : ViewModel() {
 
-    val preferencesFlow = preferencesRepository.playerPreferences.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.Eagerly,
-        initialValue = PlayerPreferences(),
+    private val uiStateInternal = MutableStateFlow(
+        PlayerPreferencesUiState(
+            preferences = preferencesRepository.playerPreferences.value,
+        ),
     )
+    val uiState = uiStateInternal.asStateFlow()
 
-    private val _uiState = MutableStateFlow(PlayerPreferencesUIState())
-    val uiState = _uiState.asStateFlow()
-
-    fun onEvent(event: PlayerPreferencesEvent) {
-        if (event is PlayerPreferencesEvent.ShowDialog) {
-            _uiState.update {
-                it.copy(showDialog = event.value)
+    init {
+        viewModelScope.launch {
+            preferencesRepository.playerPreferences.collect { preferences ->
+                uiStateInternal.update { it.copy(preferences = preferences) }
             }
         }
     }
 
-    fun updatePlaybackResume(resume: Resume) {
+    fun onEvent(event: PlayerPreferencesUiEvent) {
+        when (event) {
+            is PlayerPreferencesUiEvent.ShowDialog -> showDialog(event.value)
+            is PlayerPreferencesUiEvent.UpdatePlaybackResume -> updatePlaybackResume(event.resume)
+            PlayerPreferencesUiEvent.ToggleAutoplay -> toggleAutoplay()
+            PlayerPreferencesUiEvent.ToggleAutoPip -> toggleAutoPip()
+            PlayerPreferencesUiEvent.ToggleAutoBackgroundPlay -> toggleAutoBackgroundPlay()
+            PlayerPreferencesUiEvent.ToggleRememberBrightnessLevel -> toggleRememberBrightnessLevel()
+            PlayerPreferencesUiEvent.ToggleRememberSelections -> toggleRememberSelections()
+            is PlayerPreferencesUiEvent.UpdatePreferredPlayerOrientation -> updatePreferredPlayerOrientation(event.value)
+            is PlayerPreferencesUiEvent.UpdatePreferredControlButtonsPosition -> updatePreferredControlButtonsPosition(event.value)
+            is PlayerPreferencesUiEvent.UpdateDefaultPlaybackSpeed -> updateDefaultPlaybackSpeed(event.value)
+            is PlayerPreferencesUiEvent.UpdateControlAutoHideTimeout -> updateControlAutoHideTimeout(event.value)
+            PlayerPreferencesUiEvent.ToggleUseMaterialYouControls -> toggleUseMaterialYouControls()
+        }
+    }
+
+    private fun showDialog(value: PlayerPreferenceDialog?) {
+        uiStateInternal.update {
+            it.copy(showDialog = value)
+        }
+    }
+
+    private fun updatePlaybackResume(resume: Resume) {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
                 it.copy(
@@ -49,37 +69,7 @@ class PlayerPreferencesViewModel @Inject constructor(
         }
     }
 
-    fun updateDoubleTapGesture(gesture: DoubleTapGesture) {
-        viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences {
-                it.copy(doubleTapGesture = gesture)
-            }
-        }
-    }
-
-    fun toggleUseLongPressControls() {
-        viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences {
-                it.copy(useLongPressControls = !it.useLongPressControls)
-            }
-        }
-    }
-
-    fun toggleDoubleTapGesture() {
-        viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences {
-                it.copy(
-                    doubleTapGesture = if (it.doubleTapGesture == DoubleTapGesture.NONE) {
-                        DoubleTapGesture.FAST_FORWARD_AND_REWIND
-                    } else {
-                        DoubleTapGesture.NONE
-                    },
-                )
-            }
-        }
-    }
-
-    fun toggleAutoplay() {
+    private fun toggleAutoplay() {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
                 it.copy(autoplay = !it.autoplay)
@@ -87,7 +77,7 @@ class PlayerPreferencesViewModel @Inject constructor(
         }
     }
 
-    fun toggleAutoPip() {
+    private fun toggleAutoPip() {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
                 it.copy(autoPip = !it.autoPip)
@@ -95,7 +85,7 @@ class PlayerPreferencesViewModel @Inject constructor(
         }
     }
 
-    fun toggleAutoBackgroundPlay() {
+    private fun toggleAutoBackgroundPlay() {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
                 it.copy(autoBackgroundPlay = !it.autoBackgroundPlay)
@@ -103,7 +93,7 @@ class PlayerPreferencesViewModel @Inject constructor(
         }
     }
 
-    fun toggleRememberBrightnessLevel() {
+    private fun toggleRememberBrightnessLevel() {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
                 it.copy(rememberPlayerBrightness = !it.rememberPlayerBrightness)
@@ -111,31 +101,7 @@ class PlayerPreferencesViewModel @Inject constructor(
         }
     }
 
-    fun toggleUseSwipeControls() {
-        viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences {
-                it.copy(useSwipeControls = !it.useSwipeControls)
-            }
-        }
-    }
-
-    fun toggleUseSeekControls() {
-        viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences {
-                it.copy(useSeekControls = !it.useSeekControls)
-            }
-        }
-    }
-
-    fun toggleUseZoomControls() {
-        viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences {
-                it.copy(useZoomControls = !it.useZoomControls)
-            }
-        }
-    }
-
-    fun toggleRememberSelections() {
+    private fun toggleRememberSelections() {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
                 it.copy(rememberSelections = !it.rememberSelections)
@@ -143,7 +109,7 @@ class PlayerPreferencesViewModel @Inject constructor(
         }
     }
 
-    fun updatePreferredPlayerOrientation(value: ScreenOrientation) {
+    private fun updatePreferredPlayerOrientation(value: ScreenOrientation) {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
                 it.copy(playerScreenOrientation = value)
@@ -151,7 +117,7 @@ class PlayerPreferencesViewModel @Inject constructor(
         }
     }
 
-    fun updatePreferredControlButtonsPosition(value: ControlButtonsPosition) {
+    private fun updatePreferredControlButtonsPosition(value: ControlButtonsPosition) {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
                 it.copy(controlButtonsPosition = value)
@@ -159,21 +125,15 @@ class PlayerPreferencesViewModel @Inject constructor(
         }
     }
 
-    fun updateDefaultPlaybackSpeed(value: Float) {
+    private fun updateDefaultPlaybackSpeed(value: Float) {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
-                it.copy(defaultPlaybackSpeed = value)
+                it.copy(defaultPlaybackSpeed = value.round(1))
             }
         }
     }
 
-    fun updateLongPressControlsSpeed(value: Float) {
-        viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences { it.copy(longPressControlsSpeed = value) }
-        }
-    }
-
-    fun updateControlAutoHideTimeout(value: Int) {
+    private fun updateControlAutoHideTimeout(value: Int) {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
                 it.copy(controllerAutoHideTimeout = value)
@@ -181,38 +141,38 @@ class PlayerPreferencesViewModel @Inject constructor(
         }
     }
 
-    fun updateSeekIncrement(value: Int) {
+    private fun toggleUseMaterialYouControls() {
         viewModelScope.launch {
             preferencesRepository.updatePlayerPreferences {
-                it.copy(seekIncrement = value)
+                it.copy(useMaterialYouControls = !it.useMaterialYouControls)
             }
         }
     }
 }
 
-data class PlayerPreferencesUIState(
+@Stable
+data class PlayerPreferencesUiState(
     val showDialog: PlayerPreferenceDialog? = null,
+    val preferences: PlayerPreferences = PlayerPreferences(),
 )
 
 sealed interface PlayerPreferenceDialog {
-    object ResumeDialog : PlayerPreferenceDialog
-    object DoubleTapDialog : PlayerPreferenceDialog
-    object PlayerScreenOrientationDialog : PlayerPreferenceDialog
-    object ControlButtonsDialog : PlayerPreferenceDialog
-    object PlaybackSpeedDialog : PlayerPreferenceDialog
-    object LongPressControlsSpeedDialog : PlayerPreferenceDialog
-    object ControllerTimeoutDialog : PlayerPreferenceDialog
-    object SeekIncrementDialog : PlayerPreferenceDialog
+    data object ResumeDialog : PlayerPreferenceDialog
+    data object PlayerScreenOrientationDialog : PlayerPreferenceDialog
+    data object ControlButtonsDialog : PlayerPreferenceDialog
 }
 
-sealed interface PlayerPreferencesEvent {
-    data class ShowDialog(val value: PlayerPreferenceDialog?) : PlayerPreferencesEvent
-}
-
-fun PlayerPreferencesViewModel.showDialog(dialog: PlayerPreferenceDialog) {
-    onEvent(PlayerPreferencesEvent.ShowDialog(dialog))
-}
-
-fun PlayerPreferencesViewModel.hideDialog() {
-    onEvent(PlayerPreferencesEvent.ShowDialog(null))
+sealed interface PlayerPreferencesUiEvent {
+    data class ShowDialog(val value: PlayerPreferenceDialog?) : PlayerPreferencesUiEvent
+    data class UpdatePlaybackResume(val resume: Resume) : PlayerPreferencesUiEvent
+    data object ToggleAutoplay : PlayerPreferencesUiEvent
+    data object ToggleAutoPip : PlayerPreferencesUiEvent
+    data object ToggleAutoBackgroundPlay : PlayerPreferencesUiEvent
+    data object ToggleRememberBrightnessLevel : PlayerPreferencesUiEvent
+    data object ToggleRememberSelections : PlayerPreferencesUiEvent
+    data class UpdatePreferredPlayerOrientation(val value: ScreenOrientation) : PlayerPreferencesUiEvent
+    data class UpdatePreferredControlButtonsPosition(val value: ControlButtonsPosition) : PlayerPreferencesUiEvent
+    data class UpdateDefaultPlaybackSpeed(val value: Float) : PlayerPreferencesUiEvent
+    data class UpdateControlAutoHideTimeout(val value: Int) : PlayerPreferencesUiEvent
+    data object ToggleUseMaterialYouControls : PlayerPreferencesUiEvent
 }

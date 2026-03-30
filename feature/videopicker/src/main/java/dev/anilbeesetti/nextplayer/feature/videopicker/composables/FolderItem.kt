@@ -44,8 +44,8 @@ fun FolderItem(
     isRecentlyPlayedFolder: Boolean,
     preferences: ApplicationPreferences,
     modifier: Modifier = Modifier,
-    index: Int = 0,
-    count: Int = 1,
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
     selected: Boolean = false,
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
@@ -56,9 +56,9 @@ fun FolderItem(
             isRecentlyPlayedFolder = isRecentlyPlayedFolder,
             preferences = preferences,
             modifier = modifier,
+            isFirstItem = isFirstItem,
+            isLastItem = isLastItem,
             selected = selected,
-            index = index,
-            count = count,
             onClick = onClick,
             onLongClick = onLongClick,
         )
@@ -67,8 +67,9 @@ fun FolderItem(
             isRecentlyPlayedFolder = isRecentlyPlayedFolder,
             preferences = preferences,
             modifier = modifier,
-            index = index,
-            count = count,
+            isFirstItem = isFirstItem,
+            isLastItem = isLastItem,
+            selected = selected,
             onClick = onClick,
             onLongClick = onLongClick,
         )
@@ -82,8 +83,8 @@ private fun FolderListItem(
     isRecentlyPlayedFolder: Boolean,
     preferences: ApplicationPreferences,
     modifier: Modifier = Modifier,
-    index: Int = 0,
-    count: Int = 1,
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
     selected: Boolean = false,
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
@@ -105,8 +106,8 @@ private fun FolderListItem(
             },
             selectedContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
         ),
-        index = index,
-        count = count,
+        isFirstItem = isFirstItem,
+        isLastItem = isLastItem,
         onClick = onClick,
         onLongClick = onLongClick,
         leadingContent = {
@@ -143,20 +144,19 @@ private fun FolderListItem(
             )
         },
         supportingContent = {
-            Column {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 if (preferences.showPathField) {
                     Text(
                         text = folder.path.substringBeforeLast("/"),
                         maxLines = 2,
                         style = MaterialTheme.typography.bodySmall,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(vertical = 2.dp),
                     )
                 }
                 FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 5.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(5.dp),
                     verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
@@ -188,13 +188,15 @@ private fun FolderGridItem(
     isRecentlyPlayedFolder: Boolean,
     preferences: ApplicationPreferences,
     modifier: Modifier = Modifier,
-    index: Int = 0,
-    count: Int = 1,
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
+    selected: Boolean = false,
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
 ) {
     NextSegmentedListItem(
         modifier = modifier.width(IntrinsicSize.Min),
+        selected = selected,
         contentPadding = PaddingValues(8.dp),
         colors = ListItemDefaults.segmentedColors(
             contentColor = if (isRecentlyPlayedFolder && preferences.markLastPlayedMedia) {
@@ -207,14 +209,15 @@ private fun FolderGridItem(
             } else {
                 ListItemDefaults.colors().supportingContentColor
             },
+            selectedContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
         ),
-        index = index,
-        count = count,
+        isFirstItem = isFirstItem,
+        isLastItem = isLastItem,
         onClick = onClick,
         onLongClick = onLongClick,
         content = {
             Column(
-                modifier = modifier.width(IntrinsicSize.Min),
+                modifier = modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -222,7 +225,7 @@ private fun FolderGridItem(
                     Icon(
                         imageVector = ImageVector.vectorResource(id = R.drawable.folder_thumb),
                         contentDescription = "",
-                        tint = MaterialTheme.colorScheme.secondaryContainer,
+                        tint = MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier
                             .width(min(90.dp, LocalConfiguration.current.screenWidthDp.dp * 0.3f))
                             .aspectRatio(20 / 17f),
@@ -254,7 +257,7 @@ private fun FolderGridItem(
                         color = if (isRecentlyPlayedFolder && preferences.markLastPlayedMedia) {
                             MaterialTheme.colorScheme.primary
                         } else {
-                            ListItemDefaults.colors().headlineColor
+                            ListItemDefaults.colors().contentColor
                         },
                         textAlign = TextAlign.Center,
                     )

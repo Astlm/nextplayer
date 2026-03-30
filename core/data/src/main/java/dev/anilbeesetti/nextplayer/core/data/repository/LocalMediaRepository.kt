@@ -55,14 +55,10 @@ class LocalMediaRepository @Inject constructor(
     }
 
     override suspend fun updateMediumPosition(uri: String, position: Long) {
-        val duration = mediumDao.get(uri)?.duration ?: position.plus(1)
-        val adjustedPosition = position.takeIf { it < duration } ?: Long.MIN_VALUE.plus(1)
-
         val stateEntity = mediumStateDao.get(uri) ?: MediumStateEntity(uriString = uri)
-
         mediumStateDao.upsert(
             mediumState = stateEntity.copy(
-                playbackPosition = adjustedPosition,
+                playbackPosition = position,
                 lastPlayedTime = System.currentTimeMillis(),
             ),
         )
@@ -134,6 +130,28 @@ class LocalMediaRepository @Inject constructor(
         mediumStateDao.upsert(
             mediumState = stateEntity.copy(
                 externalSubs = newExternalSubs,
+                lastPlayedTime = System.currentTimeMillis(),
+            ),
+        )
+    }
+
+    override suspend fun updateSubtitleDelay(uri: String, delay: Long) {
+        val stateEntity = mediumStateDao.get(uri) ?: MediumStateEntity(uriString = uri)
+
+        mediumStateDao.upsert(
+            mediumState = stateEntity.copy(
+                subtitleDelayMilliseconds = delay,
+                lastPlayedTime = System.currentTimeMillis(),
+            ),
+        )
+    }
+
+    override suspend fun updateSubtitleSpeed(uri: String, speed: Float) {
+        val stateEntity = mediumStateDao.get(uri) ?: MediumStateEntity(uriString = uri)
+
+        mediumStateDao.upsert(
+            mediumState = stateEntity.copy(
+                subtitleSpeed = speed,
                 lastPlayedTime = System.currentTimeMillis(),
             ),
         )

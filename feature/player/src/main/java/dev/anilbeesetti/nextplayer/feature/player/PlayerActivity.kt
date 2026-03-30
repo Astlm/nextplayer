@@ -3,15 +3,19 @@ package dev.anilbeesetti.nextplayer.feature.player
 import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts.OpenDocument
 import androidx.activity.viewModels
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,7 +55,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import timber.log.Timber
+
+val LocalUseMaterialYouControls = compositionLocalOf { false }
 
 @SuppressLint("UnsafeOptInUsageError")
 @AndroidEntryPoint
@@ -82,7 +87,10 @@ class PlayerActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
 
         setContent {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -99,34 +107,36 @@ class PlayerActivity : ComponentActivity() {
                 }
             }
 
-            NextPlayerTheme(darkTheme = true) {
-                MediaPlayerScreen(
-                    player = player ?: return@NextPlayerTheme,
-                    viewModel = viewModel,
-                    playerPreferences = uiState.playerPreferences ?: return@NextPlayerTheme,
-                    onSelectSubtitleClick = {
-                        lifecycleScope.launch {
-                            val uri = subtitleFileSuspendLauncher.launch(
-                                arrayOf(
-                                    MimeTypes.APPLICATION_SUBRIP,
-                                    MimeTypes.APPLICATION_TTML,
-                                    MimeTypes.TEXT_VTT,
-                                    MimeTypes.TEXT_SSA,
-                                    MimeTypes.BASE_TYPE_APPLICATION + "/octet-stream",
-                                    MimeTypes.BASE_TYPE_TEXT + "/*",
-                                ),
-                            ) ?: return@launch
-                            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            maybeInitControllerFuture()
-                            controllerFuture?.await()?.addSubtitleTrack(uri)
-                        }
-                    },
-                    onBackClick = { finishAndStopPlayerSession() },
-                    onPlayInBackgroundClick = {
-                        playInBackground = true
-                        finish()
-                    },
-                )
+            CompositionLocalProvider(LocalUseMaterialYouControls provides (uiState.playerPreferences?.useMaterialYouControls == true)) {
+                NextPlayerTheme(darkTheme = true) {
+                    MediaPlayerScreen(
+                        player = player,
+                        viewModel = viewModel,
+                        playerPreferences = uiState.playerPreferences ?: return@NextPlayerTheme,
+                        onSelectSubtitleClick = {
+                            lifecycleScope.launch {
+                                val uri = subtitleFileSuspendLauncher.launch(
+                                    arrayOf(
+                                        MimeTypes.APPLICATION_SUBRIP,
+                                        MimeTypes.APPLICATION_TTML,
+                                        MimeTypes.TEXT_VTT,
+                                        MimeTypes.TEXT_SSA,
+                                        MimeTypes.BASE_TYPE_APPLICATION + "/octet-stream",
+                                        MimeTypes.BASE_TYPE_TEXT + "/*",
+                                    ),
+                                ) ?: return@launch
+                                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                maybeInitControllerFuture()
+                                controllerFuture?.await()?.addSubtitleTrack(uri)
+                            }
+                        },
+                        onBackClick = { finishAndStopPlayerSession() },
+                        onPlayInBackgroundClick = {
+                            playInBackground = true
+                            finish()
+                        },
+                    )
+                }
             }
         }
 
@@ -199,16 +209,17 @@ class PlayerActivity : ComponentActivity() {
 
     private suspend fun playVideo(uri: Uri) = withContext(Dispatchers.Default) {
         val mediaContentUri = getMediaContentUri(uri)
-        val playlist = mediaContentUri?.let { mediaUri ->
-            viewModel.getPlaylistFromUri(mediaUri)
-                .map { it.uriString }
-                .toMutableList()
-                .apply {
-                    if (!contains(mediaUri.toString())) {
-                        add(index = 0, element = mediaUri.toString())
+        val playlist = playerApi.getPlaylist().takeIf { it.isNotEmpty() }
+            ?: mediaContentUri?.let { mediaUri ->
+                viewModel.getPlaylistFromUri(mediaUri)
+                    .map { it.uriString }
+                    .toMutableList()
+                    .apply {
+                        if (!contains(mediaUri.toString())) {
+                            add(index = 0, element = mediaUri.toString())
+                        }
                     }
-                }
-        } ?: listOf(uri.toString())
+            } ?: listOf(uri.toString())
 
         val mediaItemIndexToPlay = playlist.indexOfFirst {
             it == (mediaContentUri ?: uri).toString()
@@ -261,7 +272,6 @@ class PlayerActivity : ComponentActivity() {
 
         override fun onPlayerError(error: PlaybackException) {
             super.onPlayerError(error)
-            Timber.e(error)
             NextLogger.e("PlayerActivity", "Playback error", error)
             val alertDialog = MaterialAlertDialogBuilder(this@PlayerActivity).apply {
                 setTitle(getString(coreUiR.string.error_playing_video))
@@ -279,7 +289,6 @@ class PlayerActivity : ComponentActivity() {
 
             alertDialog.show()
         }
-
         override fun onPlaybackStateChanged(playbackState: Int) {
             super.onPlaybackStateChanged(playbackState)
             when (playbackState) {
@@ -287,6 +296,7 @@ class PlayerActivity : ComponentActivity() {
                     isPlaybackFinished = mediaController?.playbackState == Player.STATE_ENDED
                     finishAndStopPlayerSession()
                 }
+
                 else -> {}
             }
         }

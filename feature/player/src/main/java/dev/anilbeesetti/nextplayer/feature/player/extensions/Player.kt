@@ -11,15 +11,6 @@ import androidx.media3.session.MediaController
 import dev.anilbeesetti.nextplayer.core.common.logging.NextLogger
 import dev.anilbeesetti.nextplayer.feature.player.service.setMediaControllerIsScrubbingModeEnabled
 
-/**
- * Switches to selected track.
- *
- * @param trackType The type of track to switch.
- * @param trackIndex The index of the track to switch to, or null to enable the track.
- *
- * if trackIndex is a negative number, the track will be disabled
- * if trackIndex is a valid index, the track will be switched to that index
- */
 fun Player.switchTrack(trackType: @C.TrackType Int, trackIndex: Int) {
     val trackTypeText = when (trackType) {
         C.TRACK_TYPE_AUDIO -> "audio"
@@ -37,14 +28,12 @@ fun Player.switchTrack(trackType: @C.TrackType Int, trackIndex: Int) {
         val tracks = currentTracks.groups.filter { it.type == trackType }
 
         if (tracks.isEmpty() || trackIndex >= tracks.size) {
-            NextLogger.d("Player", "Operation failed: Invalid track index: $trackIndex")
+            NextLogger.e("Player", "Operation failed: Invalid track index: $trackIndex")
             return
         }
 
         NextLogger.d("Player", "Setting $trackTypeText track: $trackIndex")
         val trackSelectionOverride = TrackSelectionOverride(tracks[trackIndex].mediaTrackGroup, 0)
-
-        // Override the track selection parameters to force the selection of the specified track.
         trackSelectionParameters = trackSelectionParameters
             .buildUpon()
             .setTrackTypeDisabled(trackType, false)

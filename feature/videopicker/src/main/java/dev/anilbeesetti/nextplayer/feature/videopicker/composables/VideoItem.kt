@@ -36,8 +36,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
 import dev.anilbeesetti.nextplayer.core.model.MediaLayoutMode
 import dev.anilbeesetti.nextplayer.core.model.Video
@@ -51,8 +52,8 @@ fun VideoItem(
     isRecentlyPlayedVideo: Boolean,
     preferences: ApplicationPreferences,
     modifier: Modifier = Modifier,
-    index: Int = 0,
-    count: Int = 1,
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
     selected: Boolean = false,
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
@@ -63,8 +64,8 @@ fun VideoItem(
             isRecentlyPlayedVideo = isRecentlyPlayedVideo,
             preferences = preferences,
             modifier = modifier,
-            index = index,
-            count = count,
+            isFirstItem = isFirstItem,
+            isLastItem = isLastItem,
             selected = selected,
             onClick = onClick,
             onLongClick = onLongClick,
@@ -74,8 +75,9 @@ fun VideoItem(
             isRecentlyPlayedVideo = isRecentlyPlayedVideo,
             preferences = preferences,
             modifier = modifier,
-            index = index,
-            count = count,
+            isFirstItem = isFirstItem,
+            isLastItem = isLastItem,
+            selected = selected,
             onClick = onClick,
             onLongClick = onLongClick,
         )
@@ -89,8 +91,8 @@ private fun VideoListItem(
     isRecentlyPlayedVideo: Boolean,
     preferences: ApplicationPreferences,
     modifier: Modifier = Modifier,
-    index: Int = 0,
-    count: Int = 1,
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
     selected: Boolean = false,
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
@@ -112,8 +114,8 @@ private fun VideoListItem(
             },
             selectedContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
         ),
-        index = index,
-        count = count,
+        isFirstItem = isFirstItem,
+        isLastItem = isLastItem,
         onClick = onClick,
         onLongClick = onLongClick,
         leadingContent = {
@@ -133,18 +135,28 @@ private fun VideoListItem(
             )
         },
         supportingContent = {
-            FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 5.dp),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                if (preferences.showSizeField) {
-                    InfoChip(text = video.formattedFileSize)
+                if (preferences.showPathField) {
+                    Text(
+                        text = video.path.substringBeforeLast("/"),
+                        maxLines = 2,
+                        style = MaterialTheme.typography.bodySmall,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                if (preferences.showResolutionField && video.height > 0) {
-                    InfoChip(text = "${video.height}p")
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    if (preferences.showSizeField) {
+                        InfoChip(text = video.formattedFileSize)
+                    }
+                    if (preferences.showResolutionField && video.height > 0) {
+                        InfoChip(text = "${video.height}p")
+                    }
                 }
             }
         },
@@ -158,13 +170,15 @@ private fun VideoGridItem(
     isRecentlyPlayedVideo: Boolean,
     preferences: ApplicationPreferences,
     modifier: Modifier = Modifier,
-    index: Int = 0,
-    count: Int = 1,
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
+    selected: Boolean = false,
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
 ) {
     NextSegmentedListItem(
         modifier = modifier.width(IntrinsicSize.Min),
+        selected = selected,
         contentPadding = PaddingValues(8.dp),
         colors = ListItemDefaults.segmentedColors(
             contentColor = if (isRecentlyPlayedVideo && preferences.markLastPlayedMedia) {
@@ -177,9 +191,10 @@ private fun VideoGridItem(
             } else {
                 ListItemDefaults.colors().supportingContentColor
             },
+            selectedContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f),
         ),
-        index = index,
-        count = count,
+        isFirstItem = isFirstItem,
+        isLastItem = isLastItem,
         onClick = onClick,
         onLongClick = onLongClick,
         content = {
@@ -200,7 +215,7 @@ private fun VideoGridItem(
                     color = if (isRecentlyPlayedVideo && preferences.markLastPlayedMedia) {
                         MaterialTheme.colorScheme.primary
                     } else {
-                        ListItemDefaults.colors().headlineColor
+                        ListItemDefaults.colors().contentColor
                     },
                 )
             }
@@ -229,10 +244,10 @@ private fun ThumbnailView(
                 .align(Alignment.Center)
                 .fillMaxSize(0.5f),
         )
-        if (preferences.showThumbnailField && !video.thumbnailPath.isNullOrBlank()) {
+        if (preferences.showThumbnailField) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
-                    .data(video.thumbnailPath)
+                    .data(video.uriString)
                     .crossfade(true)
                     .build(),
                 contentDescription = null,

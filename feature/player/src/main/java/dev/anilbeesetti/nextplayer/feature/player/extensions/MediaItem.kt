@@ -11,6 +11,8 @@ private const val MEDIA_METADATA_SUBTITLE_TRACK_INDEX_KEY = "subtitle_track_inde
 private const val MEDIA_METADATA_VIDEO_ZOOM_KEY = "media_metadata_video_zoom"
 private const val MEDIA_METADATA_VIDEO_GROUP_INDEX_KEY = "video_group_index"
 private const val MEDIA_METADATA_VIDEO_TRACK_INDEX_IN_GROUP_KEY = "video_track_index_in_group"
+private const val MEDIA_METADATA_SUBTITLE_DELAY_KEY = "media_metadata_subtitle_delay"
+private const val MEDIA_METADATA_SUBTITLE_SPEED_KEY = "media_metadata_subtitle_speed"
 
 private fun Bundle.setExtras(
     positionMs: Long?,
@@ -20,6 +22,8 @@ private fun Bundle.setExtras(
     subtitleTrackIndex: Int?,
     videoGroupIndex: Int?,
     videoTrackIndexInGroup: Int?,
+    subtitleDelayMilliseconds: Long? = null,
+    subtitleSpeed: Float? = null,
 ) = apply {
     if (positionMs != null) putLong(MEDIA_METADATA_POSITION_KEY, positionMs) else remove(MEDIA_METADATA_POSITION_KEY)
     if (videoScale != null) putFloat(MEDIA_METADATA_VIDEO_ZOOM_KEY, videoScale) else remove(MEDIA_METADATA_VIDEO_ZOOM_KEY)
@@ -32,6 +36,8 @@ private fun Bundle.setExtras(
     } else {
         remove(MEDIA_METADATA_VIDEO_TRACK_INDEX_IN_GROUP_KEY)
     }
+    if (subtitleDelayMilliseconds != null) putLong(MEDIA_METADATA_SUBTITLE_DELAY_KEY, subtitleDelayMilliseconds) else remove(MEDIA_METADATA_SUBTITLE_DELAY_KEY)
+    if (subtitleSpeed != null) putFloat(MEDIA_METADATA_SUBTITLE_SPEED_KEY, subtitleSpeed) else remove(MEDIA_METADATA_SUBTITLE_SPEED_KEY)
 }
 
 fun MediaMetadata.Builder.setExtras(
@@ -42,7 +48,9 @@ fun MediaMetadata.Builder.setExtras(
     subtitleTrackIndex: Int? = null,
     videoGroupIndex: Int? = null,
     videoTrackIndexInGroup: Int? = null,
-) = setExtras(
+    subtitleDelayMilliseconds: Long? = null,
+    subtitleSpeed: Float? = null,
+): MediaMetadata.Builder = setExtras(
     Bundle().setExtras(
         positionMs = positionMs,
         videoScale = videoScale,
@@ -51,6 +59,8 @@ fun MediaMetadata.Builder.setExtras(
         subtitleTrackIndex = subtitleTrackIndex,
         videoGroupIndex = videoGroupIndex,
         videoTrackIndexInGroup = videoTrackIndexInGroup,
+        subtitleDelayMilliseconds = subtitleDelayMilliseconds,
+        subtitleSpeed = subtitleSpeed,
     ),
 )
 
@@ -96,24 +106,43 @@ val MediaMetadata.videoTrackIndexInGroup: Int?
             .takeIf { containsKey(MEDIA_METADATA_VIDEO_TRACK_INDEX_IN_GROUP_KEY) }
     }
 
+val MediaMetadata.subtitleDelayMilliseconds: Long?
+    get() = extras?.run {
+        getLong(MEDIA_METADATA_SUBTITLE_DELAY_KEY)
+            .takeIf { containsKey(MEDIA_METADATA_SUBTITLE_DELAY_KEY) }
+    }
+
+val MediaMetadata.subtitleSpeed: Float?
+    get() = extras?.run {
+        getFloat(MEDIA_METADATA_SUBTITLE_SPEED_KEY)
+            .takeIf { containsKey(MEDIA_METADATA_SUBTITLE_SPEED_KEY) }
+    }
+
 fun MediaItem.copy(
     positionMs: Long? = this.mediaMetadata.positionMs,
+    durationMs: Long? = this.mediaMetadata.durationMs,
     videoZoom: Float? = this.mediaMetadata.videoZoom,
     playbackSpeed: Float? = this.mediaMetadata.playbackSpeed,
     audioTrackIndex: Int? = this.mediaMetadata.audioTrackIndex,
     subtitleTrackIndex: Int? = this.mediaMetadata.subtitleTrackIndex,
     videoGroupIndex: Int? = this.mediaMetadata.videoGroupIndex,
     videoTrackIndexInGroup: Int? = this.mediaMetadata.videoTrackIndexInGroup,
-) = buildUpon().setMediaMetadata(
-    mediaMetadata.buildUpon().setExtras(
-        Bundle(mediaMetadata.extras).setExtras(
-            positionMs = positionMs,
-            videoScale = videoZoom,
-            playbackSpeed = playbackSpeed,
-            audioTrackIndex = audioTrackIndex,
-            subtitleTrackIndex = subtitleTrackIndex,
-            videoGroupIndex = videoGroupIndex,
-            videoTrackIndexInGroup = videoTrackIndexInGroup,
-        ),
-    ).build(),
+    subtitleDelayMilliseconds: Long? = this.mediaMetadata.subtitleDelayMilliseconds,
+    subtitleSpeed: Float? = this.mediaMetadata.subtitleSpeed,
+): MediaItem = buildUpon().setMediaMetadata(
+    mediaMetadata.buildUpon()
+        .setDurationMs(durationMs)
+        .setExtras(
+            Bundle(mediaMetadata.extras).setExtras(
+                positionMs = positionMs,
+                videoScale = videoZoom,
+                playbackSpeed = playbackSpeed,
+                audioTrackIndex = audioTrackIndex,
+                subtitleTrackIndex = subtitleTrackIndex,
+                videoGroupIndex = videoGroupIndex,
+                videoTrackIndexInGroup = videoTrackIndexInGroup,
+                subtitleDelayMilliseconds = subtitleDelayMilliseconds,
+                subtitleSpeed = subtitleSpeed,
+            ),
+        ).build(),
 ).build()

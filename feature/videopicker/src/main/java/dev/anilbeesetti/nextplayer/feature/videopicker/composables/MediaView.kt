@@ -2,7 +2,6 @@ package dev.anilbeesetti.nextplayer.feature.videopicker.composables
 
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,21 +14,19 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onFirstVisible
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
 import dev.anilbeesetti.nextplayer.core.model.Folder
 import dev.anilbeesetti.nextplayer.core.model.MediaLayoutMode
@@ -41,11 +38,12 @@ import dev.anilbeesetti.nextplayer.feature.videopicker.state.SelectionManager
 import dev.anilbeesetti.nextplayer.feature.videopicker.state.rememberSelectionManager
 import kotlin.math.abs
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalPermissionsApi::class)
 @Composable
 fun MediaView(
-    rootFolder: Folder?,
+    rootFolder: Folder,
     preferences: ApplicationPreferences,
+    showHeaders: Boolean = preferences.mediaViewMode == MediaViewMode.FOLDER_TREE,
     contentPadding: PaddingValues = PaddingValues(),
     selectionManager: SelectionManager = rememberSelectionManager(),
     lazyGridState: LazyGridState = rememberLazyGridState(),
@@ -84,26 +82,16 @@ fun MediaView(
         }
 
         LazyVerticalGrid(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(MaterialTheme.colorScheme.background),
+            modifier = Modifier.fillMaxSize(),
             state = lazyGridState,
             columns = GridCells.Fixed(spans),
-            contentPadding = contentPadding + PaddingValues(horizontal = contentHorizontalPadding) + PaddingValues(vertical = 8.dp),
+            contentPadding = contentPadding + PaddingValues(horizontal = contentHorizontalPadding, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(itemSpacing),
             horizontalArrangement = Arrangement.spacedBy(itemSpacing),
         ) {
-            if (rootFolder == null || rootFolder.folderList.isEmpty() && rootFolder.mediaList.isEmpty()) {
+            if (showHeaders && rootFolder.folderList.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    NoVideosFound()
-                }
-                return@LazyVerticalGrid
-            }
-
-            if (preferences.mediaViewMode == MediaViewMode.FOLDER_TREE && rootFolder.folderList.isNotEmpty()) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    ListSectionTitle(text = stringResource(id = R.string.folders))
+                    ListSectionTitle(text = stringResource(id = R.string.folders) + " (${rootFolder.folderList.size})")
                 }
             }
             itemsIndexed(
@@ -116,11 +104,12 @@ fun MediaView(
                     folder = folder,
                     isRecentlyPlayedFolder = rootFolder.isRecentlyPlayedVideo(folder.recentlyPlayedVideo),
                     preferences = preferences,
-                    index = index,
                     selected = selected,
-                    count = rootFolder.folderList.size,
+                    isFirstItem = index == 0,
+                    isLastItem = index == rootFolder.folderList.lastIndex,
                     onClick = {
                         if (selectionManager.isInSelectionMode) {
+                            haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
                             selectionManager.toggleFolderSelection(folder)
                         } else {
                             onFolderClick(folder.path)
@@ -139,9 +128,9 @@ fun MediaView(
                 }
             }
 
-            if (preferences.mediaViewMode == MediaViewMode.FOLDER_TREE && rootFolder.mediaList.isNotEmpty()) {
+            if (showHeaders && rootFolder.mediaList.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    ListSectionTitle(text = stringResource(id = R.string.videos))
+                    ListSectionTitle(text = stringResource(id = R.string.videos) + " (${rootFolder.mediaList.size})")
                 }
             }
 
@@ -155,11 +144,12 @@ fun MediaView(
                     video = video,
                     preferences = preferences,
                     isRecentlyPlayedVideo = rootFolder.isRecentlyPlayedVideo(video),
-                    index = index,
-                    count = rootFolder.mediaList.size,
+                    isFirstItem = index == 0,
+                    isLastItem = index == rootFolder.mediaList.lastIndex,
                     selected = selected,
                     onClick = {
                         if (selectionManager.isInSelectionMode) {
+                            haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
                             selectionManager.toggleVideoSelection(video)
                         } else {
                             onVideoClick(video.uriString.toUri())

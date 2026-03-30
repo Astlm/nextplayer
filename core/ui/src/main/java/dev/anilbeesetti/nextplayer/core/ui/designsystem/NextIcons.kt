@@ -9,22 +9,27 @@ import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.BrightnessHigh
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ClosedCaption
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.Deselect
 import androidx.compose.material.icons.rounded.DeveloperBoard
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.DoubleArrow
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FileOpen
+import androidx.compose.material.icons.rounded.FilterFrames
 import androidx.compose.material.icons.rounded.FlipToBack
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.FolderOff
@@ -33,13 +38,17 @@ import androidx.compose.material.icons.rounded.FormatBold
 import androidx.compose.material.icons.rounded.FormatSize
 import androidx.compose.material.icons.rounded.Headset
 import androidx.compose.material.icons.rounded.HeadsetOff
+import androidx.compose.material.icons.rounded.HideSource
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.LocalMovies
 import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.MiscellaneousServices
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PanToolAlt
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.Pinch
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -49,6 +58,8 @@ import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Replay10
 import androidx.compose.material.icons.rounded.ResetTv
 import androidx.compose.material.icons.rounded.ScreenRotationAlt
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.SmartButton
@@ -63,6 +74,7 @@ import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Title
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Update
 
 object NextIcons {
@@ -110,6 +122,7 @@ object NextIcons {
     val Replay = Icons.Rounded.Replay10
     val Resume = Icons.Rounded.ResetTv
     val Rotation = Icons.Rounded.ScreenRotationAlt
+    val Search = Icons.Rounded.Search
     val Selection = Icons.Rounded.DoneAll
     val Settings = Icons.Rounded.Settings
     val Share = Icons.Rounded.Share
@@ -117,6 +130,7 @@ object NextIcons {
     val Style = Icons.Rounded.Style
     val Subtitle = Icons.Rounded.Subtitles
     val Size = Icons.AutoMirrored.Rounded.CompareArrows
+    val Sensitivity = Icons.Rounded.Tune
     val Speed = Icons.Rounded.Speed
     val SwipeHorizontal = Icons.Rounded.Swipe
     val SwipeVertical = Icons.Rounded.SwipeVertical
@@ -129,4 +143,15 @@ object NextIcons {
     val ButtonsPosition = Icons.Rounded.AppSettingsAlt
     val Close = Icons.Rounded.Close
     val History = Icons.Rounded.History
+    val Pan = Icons.Rounded.PanToolAlt
+    val HideSource = Icons.Rounded.HideSource
+    val SelectAll = Icons.Rounded.SelectAll
+    val DeselectAll = Icons.Rounded.Deselect
+    val FastForward = Icons.Rounded.FastForward
+    val BugReport = Icons.Rounded.BugReport
+    val Copy = Icons.Rounded.ContentCopy
+    val ExtraSettings = Icons.Rounded.MiscellaneousServices
+    val DeleteSweep = Icons.Rounded.DeleteSweep
+    val Image = Icons.Rounded.Image
+    val Frame = Icons.Rounded.FilterFrames
 }

@@ -19,9 +19,17 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @UnstableApi
 @Composable
-fun rememberSeekGestureState(player: Player): SeekGestureState {
+fun rememberSeekGestureState(
+    player: Player,
+    sensitivity: Float = 0.5f,
+    enableSeekGesture: Boolean,
+): SeekGestureState {
     val seekGestureState = remember {
-        SeekGestureState(player = player)
+        SeekGestureState(
+            player = player,
+            sensitivity = sensitivity,
+            enableSeekGesture = enableSeekGesture,
+        )
     }
     return seekGestureState
 }
@@ -29,6 +37,8 @@ fun rememberSeekGestureState(player: Player): SeekGestureState {
 @Stable
 class SeekGestureState(
     private val player: Player,
+    private val enableSeekGesture: Boolean = true,
+    private val sensitivity: Float = 0.5f,
 ) {
     var isSeeking: Boolean by mutableStateOf(false)
         private set
@@ -65,6 +75,7 @@ class SeekGestureState(
     }
 
     fun onDragStart(offset: Offset) {
+        if (!enableSeekGesture) return
         if (player.currentPosition == C.TIME_UNSET) return
         if (player.duration == C.TIME_UNSET) return
         if (!player.isCurrentMediaItemSeekable) return
@@ -81,19 +92,17 @@ class SeekGestureState(
         if (seekStartPosition == null) return
         if (player.duration == C.TIME_UNSET) return
         if (!player.isCurrentMediaItemSeekable) return
+        if (player.currentPosition <= 0L && dragAmount < 0) return
+        if (player.currentPosition >= player.duration && dragAmount > 0) return
         if (change.isConsumed) return
 
-        val newPosition = seekStartPosition!! + ((change.position.x - seekStartX) * 150f).toInt()
+        val newPosition = seekStartPosition!! + ((change.position.x - seekStartX) * (sensitivity * 100)).toInt()
         seekAmount = (newPosition - seekStartPosition!!).coerceIn(
             minimumValue = 0 - seekStartPosition!!,
             maximumValue = player.duration - seekStartPosition!!,
         )
 
-        if (dragAmount > 0) {
-            player.seekTo(newPosition.coerceAtMost(player.duration))
-        } else {
-            player.seekTo(newPosition.coerceAtLeast(0L))
-        }
+        player.seekTo(newPosition.coerceIn(0L, player.duration))
     }
 
     fun onDragEnd() {

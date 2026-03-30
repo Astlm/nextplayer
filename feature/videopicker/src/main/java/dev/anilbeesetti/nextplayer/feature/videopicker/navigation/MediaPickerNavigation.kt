@@ -31,16 +31,20 @@ fun NavController.navigateToMediaPickerScreen(
 
 fun NavGraphBuilder.mediaPickerScreen(
     onNavigateUp: () -> Unit,
+    onPlayVideo: (uri: Uri) -> Unit,
     onPlayVideos: (uris: List<Uri>) -> Unit,
     onFolderClick: (folderPath: String) -> Unit,
     onSettingsClick: () -> Unit,
+    onSearchClick: () -> Unit,
 ) {
     composable<MediaPickerRoute> {
         MediaPickerRoute(
+            onPlayVideo = onPlayVideo,
             onPlayVideos = onPlayVideos,
             onNavigateUp = onNavigateUp,
             onFolderClick = onFolderClick,
             onSettingsClick = onSettingsClick,
+            onSearchClick = onSearchClick,
         )
     }
 }
