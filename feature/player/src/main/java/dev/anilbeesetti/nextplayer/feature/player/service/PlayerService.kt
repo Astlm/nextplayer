@@ -24,6 +24,7 @@ import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -60,9 +61,11 @@ import dev.anilbeesetti.nextplayer.feature.player.PlayerActivity
 import dev.anilbeesetti.nextplayer.feature.player.R
 import dev.anilbeesetti.nextplayer.feature.player.cache.PerVideoStreamCache
 import dev.anilbeesetti.nextplayer.feature.player.cache.StreamCacheAnalyticsListener
+import dev.anilbeesetti.nextplayer.feature.player.datasource.RequestHeadersCacheKeyFactory
 import dev.anilbeesetti.nextplayer.feature.player.datasource.DashSegmentPrefetcher
 import dev.anilbeesetti.nextplayer.feature.player.datasource.SegmentPrefetcher
 import dev.anilbeesetti.nextplayer.feature.player.datasource.SmartCachingDataSourceFactory
+import dev.anilbeesetti.nextplayer.feature.player.datasource.withCurrentRequestHeaders
 import dev.anilbeesetti.nextplayer.feature.player.extensions.addAdditionalSubtitleConfiguration
 import dev.anilbeesetti.nextplayer.feature.player.extensions.audioTrackIndex
 import dev.anilbeesetti.nextplayer.feature.player.extensions.copy
@@ -71,6 +74,7 @@ import dev.anilbeesetti.nextplayer.feature.player.extensions.playbackSpeed
 import dev.anilbeesetti.nextplayer.feature.player.extensions.positionMs
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setExtras
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setIsScrubbingModeEnabled
+import dev.anilbeesetti.nextplayer.feature.player.extensions.requestHeaders
 import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleDelayMilliseconds
 import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleSpeed
 import dev.anilbeesetti.nextplayer.feature.player.extensions.subtitleTrackIndex
@@ -119,6 +123,9 @@ class PlayerService : MediaSessionService() {
     @Volatile
     private var currentMediaItemMimeType: String? = null
 
+    @Volatile
+    private var currentMediaItemRequestHeaders: Map<String, String> = emptyMap()
+
     @Inject
     lateinit var preferencesRepository: PreferencesRepository
 
@@ -143,13 +150,7 @@ class PlayerService : MediaSessionService() {
             super.onMediaItemTransition(mediaItem, reason)
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) return
             isMediaItemReady = false
-            mediaItem?.let { item ->
-                currentMediaItemUri = item.localConfiguration?.uri
-                currentMediaItemMimeType = item.localConfiguration?.mimeType
-                serviceScope.launch(Dispatchers.IO) {
-                    streamCache?.setActiveMediaId(item.mediaId)
-                }
-            }
+            updateCurrentMediaItemContext(mediaItem)
             mediaItem?.mediaMetadata?.let { metadata ->
                 mediaSession?.player?.run {
                     setPlaybackSpeed(metadata.playbackSpeed ?: playerPreferences.defaultPlaybackSpeed)
@@ -469,11 +470,7 @@ class PlayerService : MediaSessionService() {
             startIndex: Int,
             startPositionMs: Long,
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = serviceScope.future(Dispatchers.Default) {
-            mediaItems.getOrNull(startIndex)?.let { item ->
-                runCatching { streamCache?.setActiveMediaId(item.mediaId) }
-                currentMediaItemUri = item.localConfiguration?.uri
-                currentMediaItemMimeType = item.localConfiguration?.mimeType
-            }
+            updateCurrentMediaItemContext(mediaItems.getOrNull(startIndex))
             val updatedMediaItems = updatedMediaItemsWithMetadata(mediaItems)
             loadArtworkInBackground(updatedMediaItems)
             return@future MediaSession.MediaItemsWithStartPosition(updatedMediaItems, startIndex, startPositionMs)
@@ -661,9 +658,12 @@ class PlayerService : MediaSessionService() {
         }
 
         val upstreamFactory = DefaultDataSource.Factory(applicationContext)
+        val cacheKeyFactory = RequestHeadersCacheKeyFactory()
         val segmentPrefetcher = SegmentPrefetcher(
             upstreamFactory = upstreamFactory,
             cacheProvider = { streamCache?.getCache() },
+            requestHeadersProvider = { currentMediaItemRequestHeaders },
+            cacheKeyFactory = cacheKeyFactory,
             scope = serviceScope,
         )
         streamCache = PerVideoStreamCache(context = applicationContext)
@@ -681,10 +681,18 @@ class PlayerService : MediaSessionService() {
             rangeChunkSizeBytesProvider = { latestPlayerPreferences.rangeStreamChunkSizeBytes },
             segmentConcurrentDownloadsProvider = { latestPlayerPreferences.segmentConcurrentDownloads },
             segmentPrefetcher = segmentPrefetcher,
+            cacheKeyFactory = cacheKeyFactory,
+        )
+
+        val dataSourceFactory = ResolvingDataSource.Factory(
+            cachingDataSourceFactory,
+            ResolvingDataSource.Resolver { dataSpec ->
+                dataSpec.withCurrentRequestHeaders(currentMediaItemRequestHeaders)
+            },
         )
 
         val dashSegmentPrefetcher = DashSegmentPrefetcher(
-            dataSourceFactory = cachingDataSourceFactory,
+            dataSourceFactory = dataSourceFactory,
             segmentPrefetcher = segmentPrefetcher,
             manifestUriProvider = { currentMediaItemUri },
             isDashProvider = { currentMediaItemMimeType == MimeTypes.APPLICATION_MPD },
@@ -693,7 +701,7 @@ class PlayerService : MediaSessionService() {
         )
 
         val mediaSourceFactory = DefaultMediaSourceFactory(
-            cachingDataSourceFactory,
+            dataSourceFactory,
             WmvAwareExtractorsFactory(applicationContext),
         )
 
@@ -930,6 +938,18 @@ class PlayerService : MediaSessionService() {
                         player.replaceMediaItem(currentIndex, updatedMediaItem)
                     }
                 }
+            }
+        }
+    }
+
+    private fun updateCurrentMediaItemContext(mediaItem: MediaItem?) {
+        currentMediaItemUri = mediaItem?.localConfiguration?.uri
+        currentMediaItemMimeType = mediaItem?.localConfiguration?.mimeType
+        currentMediaItemRequestHeaders = mediaItem?.requestHeaders ?: emptyMap()
+
+        mediaItem?.let { item ->
+            serviceScope.launch(Dispatchers.IO) {
+                runCatching { streamCache?.setActiveMediaId(item.mediaId) }
             }
         }
     }

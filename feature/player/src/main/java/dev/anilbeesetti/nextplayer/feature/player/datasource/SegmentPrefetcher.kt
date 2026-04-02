@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 internal class SegmentPrefetcher(
     private val upstreamFactory: DataSource.Factory,
     private val cacheProvider: () -> Cache?,
+    private val requestHeadersProvider: () -> Map<String, String> = { emptyMap() },
     private val cacheKeyFactory: CacheKeyFactory = CacheKeyFactory.DEFAULT,
     private val scope: CoroutineScope,
 ) {
@@ -25,23 +26,24 @@ internal class SegmentPrefetcher(
 
     fun prefetch(dataSpec: DataSpec) {
         val cache = cacheProvider() ?: return
-        val key = dataSpec.key ?: cacheKeyFactory.buildCacheKey(dataSpec)
-        val lengthToCheck = resolveLengthToCheck(cache, key, dataSpec)
-        if (lengthToCheck != LENGTH_UNSET && cache.isCached(key, dataSpec.position, lengthToCheck)) return
+        val resolvedDataSpec = dataSpec.withCurrentRequestHeaders(requestHeadersProvider())
+        val key = resolvedDataSpec.key ?: cacheKeyFactory.buildCacheKey(resolvedDataSpec)
+        val lengthToCheck = resolveLengthToCheck(cache, key, resolvedDataSpec)
+        if (lengthToCheck != LENGTH_UNSET && cache.isCached(key, resolvedDataSpec.position, lengthToCheck)) return
 
         val jobKey = buildString {
             append(key)
             append(':')
-            append(dataSpec.position)
+            append(resolvedDataSpec.position)
             append(':')
-            append(dataSpec.length)
+            append(resolvedDataSpec.length)
         }
         if (!inFlight.add(jobKey)) return
 
         scope.launch(Dispatchers.IO) {
             try {
                 val cacheDataSource = createCacheDataSource(cache)
-                CacheWriter(cacheDataSource, dataSpec, null, null).cache()
+                CacheWriter(cacheDataSource, resolvedDataSpec, null, null).cache()
             } catch (_: Exception) {
                 // Best-effort prefetch; ignore failures (network, cancellations, cache contention).
             } finally {
@@ -65,7 +67,7 @@ internal class SegmentPrefetcher(
             .setUpstreamDataSourceFactory(upstreamFactory)
             .setCacheWriteDataSinkFactory(writeSinkFactory)
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-            .createDataSource() as CacheDataSource
+            .createDataSource()
     }
 
     private companion object {

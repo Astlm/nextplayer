@@ -69,6 +69,18 @@ the [Issues](https://github.com/anilbeesetti/nextplayer/issues) section.**
 - Zoom gesture
 - Picture-in-picture mode
 
+## Web intent headers
+
+When launching Next Player from a web page with `intent://`, custom HTTP headers can be passed with `S.header.<Header-Name>=<value>`.
+
+Example:
+
+```text
+intent://example.com/video.m3u8#Intent;scheme=https;package=dev.anilbeesetti.nextplayer;S.header.Authorization=Bearer%20token;S.header.Referer=https%3A%2F%2Fexample.com;end
+```
+
+Only the `S.header.<Header-Name>` format is supported.
+
 ## Planned Features
 
 - External Audio support

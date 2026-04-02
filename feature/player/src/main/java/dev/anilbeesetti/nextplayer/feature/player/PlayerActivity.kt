@@ -41,11 +41,13 @@ import dev.anilbeesetti.nextplayer.core.common.logging.NextLogger
 import dev.anilbeesetti.nextplayer.core.ui.R as coreUiR
 import dev.anilbeesetti.nextplayer.core.ui.theme.NextPlayerTheme
 import dev.anilbeesetti.nextplayer.feature.player.extensions.registerForSuspendActivityResult
+import dev.anilbeesetti.nextplayer.feature.player.extensions.setRequestHeaders
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setExtras
 import dev.anilbeesetti.nextplayer.feature.player.extensions.uriToSubtitleConfiguration
 import dev.anilbeesetti.nextplayer.feature.player.service.PlayerService
 import dev.anilbeesetti.nextplayer.feature.player.service.addSubtitleTrack
 import dev.anilbeesetti.nextplayer.feature.player.service.stopPlayerSession
+import dev.anilbeesetti.nextplayer.feature.player.utils.ExternalPlaybackRequest
 import dev.anilbeesetti.nextplayer.feature.player.utils.PlayerApi
 import java.net.HttpURLConnection
 import java.net.URL
@@ -76,7 +78,7 @@ class PlayerActivity : ComponentActivity() {
      */
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null
-    private lateinit var playerApi: PlayerApi
+    private var launchRequest: ExternalPlaybackRequest? = null
 
     /**
      * Listeners
@@ -139,8 +141,6 @@ class PlayerActivity : ComponentActivity() {
                 }
             }
         }
-
-        playerApi = PlayerApi(this)
     }
 
     override fun onStart() {
@@ -189,7 +189,8 @@ class PlayerActivity : ComponentActivity() {
     }
 
     private fun startPlayback() {
-        val uri = intent.data ?: return
+        val request = PlayerApi.parse(intent) ?: return
+        val uri = request.uri
 
         val returningFromBackground = !isIntentNew && mediaController?.currentMediaItem != null
         val isNewUriTheCurrentMediaItem = mediaController?.currentMediaItem?.localConfiguration?.uri.toString() == uri.toString()
@@ -201,15 +202,17 @@ class PlayerActivity : ComponentActivity() {
         }
 
         isIntentNew = false
+        launchRequest = request
 
         lifecycleScope.launch {
-            playVideo(uri)
+            playVideo(request)
         }
     }
 
-    private suspend fun playVideo(uri: Uri) = withContext(Dispatchers.Default) {
+    private suspend fun playVideo(request: ExternalPlaybackRequest) = withContext(Dispatchers.Default) {
+        val uri = request.uri
         val mediaContentUri = getMediaContentUri(uri)
-        val playlist = playerApi.getPlaylist().takeIf { it.isNotEmpty() }
+        val playlist = request.playlist.takeIf { it.isNotEmpty() }
             ?: mediaContentUri?.let { mediaUri ->
                 viewModel.getPlaylistFromUri(mediaUri)
                     .map { it.uriString }
@@ -230,15 +233,16 @@ class PlayerActivity : ComponentActivity() {
                 val itemUri = Uri.parse(uriString)
                 setUri(itemUri)
                 setMediaId(uriString)
-                sniffMimeTypeOverride(itemUri)?.let(::setMimeType)
+                setRequestHeaders(itemUri, request.requestHeaders)
+                sniffMimeTypeOverride(itemUri, request.requestHeaders)?.let(::setMimeType)
                 if (index == mediaItemIndexToPlay) {
                     setMediaMetadata(
                         MediaMetadata.Builder().apply {
-                            setTitle(playerApi.title)
-                            setExtras(positionMs = playerApi.position?.toLong())
+                            setTitle(request.title)
+                            setExtras(positionMs = request.positionMs)
                         }.build(),
                     )
-                    val apiSubs = playerApi.getSubs().map { subtitle ->
+                    val apiSubs = request.subtitles.map { subtitle ->
                         uriToSubtitleConfiguration(
                             uri = subtitle.uri,
                             subtitleEncoding = playerPreferences?.subtitleTextEncoding ?: "",
@@ -252,7 +256,7 @@ class PlayerActivity : ComponentActivity() {
 
         withContext(Dispatchers.Main) {
             mediaController?.run {
-                setMediaItems(mediaItems, mediaItemIndexToPlay, playerApi.position?.toLong() ?: C.TIME_UNSET)
+                setMediaItems(mediaItems, mediaItemIndexToPlay, request.positionMs ?: C.TIME_UNSET)
                 playWhenReady = viewModel.playWhenReady
                 prepare()
             }
@@ -313,8 +317,8 @@ class PlayerActivity : ComponentActivity() {
     }
 
     override fun finish() {
-        if (playerApi.shouldReturnResult) {
-            val result = playerApi.getResult(
+        if (launchRequest?.shouldReturnResult == true) {
+            val result = PlayerApi.createResult(
                 isPlaybackFinished = isPlaybackFinished,
                 duration = mediaController?.duration ?: C.TIME_UNSET,
                 position = mediaController?.currentPosition ?: C.TIME_UNSET,
@@ -363,11 +367,11 @@ class PlayerActivity : ComponentActivity() {
         onWindowAttributesChangedListener.remove(listener)
     }
 
-    private fun sniffMimeTypeOverride(uri: Uri): String? {
-        return if (isDashMpdUri(uri)) MimeTypes.APPLICATION_MPD else null
+    private fun sniffMimeTypeOverride(uri: Uri, requestHeaders: Map<String, String>): String? {
+        return if (isDashMpdUri(uri, requestHeaders)) MimeTypes.APPLICATION_MPD else null
     }
 
-    private fun isDashMpdUri(uri: Uri): Boolean {
+    private fun isDashMpdUri(uri: Uri, requestHeaders: Map<String, String>): Boolean {
         val uriString = uri.toString()
         val lowerUriString = uriString.lowercase(Locale.US)
         if (lowerUriString.endsWith(".mpd") || lowerUriString.contains(".mpd?") || lowerUriString.contains(".mpd#")) return true
@@ -396,6 +400,7 @@ class PlayerActivity : ComponentActivity() {
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
                 connection.requestMethod = "HEAD"
+                requestHeaders.forEach(connection::setRequestProperty)
                 connection.connect()
                 val contentType = (connection.getHeaderField("Content-Type") ?: "").lowercase(Locale.US)
                 contentType.contains("application/dash+xml")
@@ -414,6 +419,7 @@ class PlayerActivity : ComponentActivity() {
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
                 connection.requestMethod = "GET"
+                requestHeaders.forEach(connection::setRequestProperty)
                 connection.setRequestProperty("Range", "bytes=0-2047")
                 connection.connect()
                 val buffer = ByteArray(2048)

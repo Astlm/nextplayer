@@ -1,6 +1,7 @@
 package dev.anilbeesetti.nextplayer.feature.player.extensions
 
 import android.os.Bundle
+import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 
@@ -13,6 +14,7 @@ private const val MEDIA_METADATA_VIDEO_GROUP_INDEX_KEY = "video_group_index"
 private const val MEDIA_METADATA_VIDEO_TRACK_INDEX_IN_GROUP_KEY = "video_track_index_in_group"
 private const val MEDIA_METADATA_SUBTITLE_DELAY_KEY = "media_metadata_subtitle_delay"
 private const val MEDIA_METADATA_SUBTITLE_SPEED_KEY = "media_metadata_subtitle_speed"
+private const val REQUEST_METADATA_HTTP_HEADERS_KEY = "request_metadata_http_headers"
 
 private fun Bundle.setExtras(
     positionMs: Long?,
@@ -146,3 +148,40 @@ fun MediaItem.copy(
             ),
         ).build(),
 ).build()
+
+fun MediaItem.Builder.setRequestHeaders(
+    mediaUri: Uri,
+    requestHeaders: Map<String, String>,
+): MediaItem.Builder = apply {
+    val requestMetadataBuilder = MediaItem.RequestMetadata.Builder()
+        .setMediaUri(mediaUri)
+
+    requestHeaders.toRequestHeadersBundle()
+        ?.let(requestMetadataBuilder::setExtras)
+
+    setRequestMetadata(requestMetadataBuilder.build())
+}
+
+val MediaItem.requestHeaders: Map<String, String>
+    get() {
+        val headersBundle = requestMetadata.extras?.getBundle(REQUEST_METADATA_HTTP_HEADERS_KEY)
+            ?: return emptyMap()
+
+        return headersBundle.keySet()
+            .mapNotNull { key ->
+                headersBundle.getString(key)
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { key to it }
+            }
+            .toMap()
+    }
+
+private fun Map<String, String>.toRequestHeadersBundle(): Bundle? {
+    if (isEmpty()) return null
+
+    return Bundle().apply {
+        val headersBundle = Bundle()
+        forEach { (name, value) -> headersBundle.putString(name, value) }
+        putBundle(REQUEST_METADATA_HTTP_HEADERS_KEY, headersBundle)
+    }
+}
