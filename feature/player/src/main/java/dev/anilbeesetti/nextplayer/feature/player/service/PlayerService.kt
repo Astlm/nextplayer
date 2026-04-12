@@ -937,6 +937,19 @@ class PlayerService : MediaSessionService() {
         }
     }
 
+    private suspend fun loadArtworkForUri(uri: Uri): ByteArray? {
+        return try {
+            val result = imageLoader.execute(
+                ImageRequest.Builder(this@PlayerService)
+                    .data(uri)
+                    .build(),
+            )
+            (result as? SuccessResult)?.image?.toBitmap()?.toByteArray()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun loadArtworkInBackground(mediaItems: List<MediaItem>) {
         serviceScope.launch(Dispatchers.Default) {
             mediaItems.forEach { mediaItem ->
