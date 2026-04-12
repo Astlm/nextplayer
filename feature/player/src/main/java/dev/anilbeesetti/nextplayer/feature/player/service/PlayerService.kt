@@ -94,6 +94,7 @@ import java.io.File
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -113,6 +114,7 @@ class PlayerService : MediaSessionService() {
     private val serviceScope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var mediaSession: MediaSession? = null
     private var streamCache: PerVideoStreamCache? = null
+    private var artworkLoadJob: Job? = null
 
     @Volatile
     private var latestPlayerPreferences: PlayerPreferences = PlayerPreferences()
@@ -151,6 +153,7 @@ class PlayerService : MediaSessionService() {
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) return
             isMediaItemReady = false
             updateCurrentMediaItemContext(mediaItem)
+            loadArtworkForCurrentMediaItem()
             mediaItem?.mediaMetadata?.let { metadata ->
                 mediaSession?.player?.run {
                     setPlaybackSpeed(metadata.playbackSpeed ?: playerPreferences.defaultPlaybackSpeed)
@@ -472,7 +475,6 @@ class PlayerService : MediaSessionService() {
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = serviceScope.future(Dispatchers.Default) {
             updateCurrentMediaItemContext(mediaItems.getOrNull(startIndex))
             val updatedMediaItems = updatedMediaItemsWithMetadata(mediaItems)
-            loadArtworkInBackground(updatedMediaItems)
             return@future MediaSession.MediaItemsWithStartPosition(updatedMediaItems, startIndex, startPositionMs)
         }
 
@@ -482,7 +484,6 @@ class PlayerService : MediaSessionService() {
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> = serviceScope.future(Dispatchers.Default) {
             val updatedMediaItems = updatedMediaItemsWithMetadata(mediaItems)
-            loadArtworkInBackground(updatedMediaItems)
             return@future updatedMediaItems.toMutableList()
         }
 
@@ -789,6 +790,7 @@ class PlayerService : MediaSessionService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        artworkLoadJob?.cancel()
         loudnessEnhancer?.release()
         loudnessEnhancer = null
         mediaSession?.run {
@@ -899,15 +901,38 @@ class PlayerService : MediaSessionService() {
         appendPath(resources.getResourceEntryName(defaultArtwork))
     }.build()
 
-    private suspend fun loadArtworkForUri(uri: Uri): ByteArray? {
-        return try {
-            val result = imageLoader.execute(
-                ImageRequest.Builder(this@PlayerService)
-                    .data(uri)
-                    .build(),
+    private fun loadArtworkForCurrentMediaItem() {
+        artworkLoadJob?.cancel()
+        artworkLoadJob = serviceScope.launch(Dispatchers.Main) {
+            val player = mediaSession?.player ?: return@launch
+            val currentMediaItem = player.currentMediaItem ?: return@launch
+            if (currentMediaItem.mediaMetadata.artworkData != null) return@launch
+
+            val artworkUri = loadArtworkForMediaItem(currentMediaItem) ?: return@launch
+
+            val updatedPlayer = mediaSession?.player ?: return@launch
+            val updatedMediaItem = updatedPlayer.currentMediaItem ?: return@launch
+            if (updatedMediaItem.mediaId != currentMediaItem.mediaId) return@launch
+
+            updatedPlayer.replaceMediaItem(
+                updatedPlayer.currentMediaItemIndex,
+                updatedMediaItem.withArtwork(artworkUri),
             )
-            (result as? SuccessResult)?.image?.toBitmap()?.toByteArray()
-        } catch (_: Exception) {
+        }
+    }
+    private suspend fun loadArtworkForMediaItem(mediaItem: MediaItem): Uri? = withContext(Dispatchers.IO) {
+        val uri = mediaItem.mediaId.toUri()
+        return@withContext try {
+            val request = ImageRequest.Builder(this@PlayerService)
+                .data(uri)
+                .size(512, 512)
+                .build()
+            imageLoader.execute(request)
+            val diskCache = imageLoader.diskCache ?: return@withContext null
+            return@withContext diskCache.openSnapshot(uri.toString())?.use { snapshot ->
+                snapshot.data.toFile().toUri()
+            }
+        } catch (_: Throwable) {
             null
         }
     }
@@ -959,6 +984,14 @@ class PlayerService : MediaSessionService() {
         compress(Bitmap.CompressFormat.JPEG, 100, stream)
         return stream.toByteArray()
     }
+
+    private fun MediaItem.withArtwork(uri: Uri): MediaItem = buildUpon()
+        .setMediaMetadata(
+            mediaMetadata.buildUpon()
+                .setArtworkUri(uri)
+                .build(),
+        )
+        .build()
 
     companion object {
         @Volatile
