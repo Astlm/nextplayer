@@ -67,6 +67,7 @@ data class PlayerPreferences(
     val streamCacheClearPolicy: StreamCacheClearPolicy = StreamCacheClearPolicy.CLEAR_ON_PLAYBACK_SESSION_EXIT,
     val rangeStreamChunkSizeBytes: Long = 1024L * 1024L,
     val segmentConcurrentDownloads: Int = 1,
+    val retryHttpStatusCodes: List<Int> = emptyList(),
 ) {
 
     companion object {

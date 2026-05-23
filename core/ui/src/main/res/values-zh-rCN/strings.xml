@@ -57,6 +57,10 @@
     <string name="clear_cache">清理缓存</string>
     <string name="range_stream_chunk_size">分块大小</string>
     <string name="segment_concurrent_downloads">分段并发下载数</string>
+    <string name="retry_http_status_codes">重试 HTTP 状态码</string>
+    <string name="retry_http_status_codes_desc">不会重试任何 HTTP 状态码</string>
+    <string name="retry_http_status_codes_input">状态码</string>
+    <string name="retry_http_status_codes_help">输入用逗号或空格分隔的 HTTP 状态码，例如 401, 403, 500。</string>
     <string name="min_buffer">最小缓冲</string>
     <string name="max_buffer">最大缓冲</string>
     <string name="buffer_for_playback">启动/跳转缓冲</string>

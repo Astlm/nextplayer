@@ -103,6 +103,10 @@
     <string name="clear_cache">清理快取</string>
     <string name="range_stream_chunk_size">分塊大小</string>
     <string name="segment_concurrent_downloads">分段並行下載數</string>
+    <string name="retry_http_status_codes">重試 HTTP 狀態碼</string>
+    <string name="retry_http_status_codes_desc">不會重試任何 HTTP 狀態碼</string>
+    <string name="retry_http_status_codes_input">狀態碼</string>
+    <string name="retry_http_status_codes_help">輸入以逗號或空格分隔的 HTTP 狀態碼，例如 401, 403, 500。</string>
     <string name="min_buffer">最小緩衝</string>
     <string name="max_buffer">最大緩衝</string>
     <string name="buffer_for_playback">啟動/跳轉緩衝</string>

@@ -86,6 +86,7 @@ import dev.anilbeesetti.nextplayer.feature.player.extensions.videoZoom
 import dev.anilbeesetti.nextplayer.feature.player.ffmpeg.NoOpDataSource
 import dev.anilbeesetti.nextplayer.feature.player.ffmpeg.WmvAsfDetector
 import dev.anilbeesetti.nextplayer.feature.player.ffmpeg.WmvAwareExtractorsFactory
+import dev.anilbeesetti.nextplayer.feature.player.network.WhitelistHttpStatusLoadErrorHandlingPolicy
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
 import io.github.anilbeesetti.nextlib.media3ext.renderer.subtitleDelayMilliseconds
 import io.github.anilbeesetti.nextlib.media3ext.renderer.subtitleSpeed
@@ -704,6 +705,10 @@ class PlayerService : MediaSessionService() {
         val mediaSourceFactory = DefaultMediaSourceFactory(
             dataSourceFactory,
             WmvAwareExtractorsFactory(applicationContext),
+        ).setLoadErrorHandlingPolicy(
+            WhitelistHttpStatusLoadErrorHandlingPolicy {
+                latestPlayerPreferences.retryHttpStatusCodes
+            },
         )
 
         val minBufferMs = playerPreferences.minBufferMs.coerceAtLeast(0)

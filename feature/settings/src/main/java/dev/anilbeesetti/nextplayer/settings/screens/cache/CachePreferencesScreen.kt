@@ -39,6 +39,8 @@ import dev.anilbeesetti.nextplayer.core.common.Utils
 import dev.anilbeesetti.nextplayer.core.common.cache.StreamCacheStorage
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.StreamCacheClearPolicy
+import dev.anilbeesetti.nextplayer.core.model.formatRetryHttpStatusCodes
+import dev.anilbeesetti.nextplayer.core.model.parseRetryHttpStatusCodes
 import dev.anilbeesetti.nextplayer.core.ui.R
 import dev.anilbeesetti.nextplayer.core.ui.components.ClickablePreferenceItem
 import dev.anilbeesetti.nextplayer.core.ui.components.ListSectionTitle
@@ -129,8 +131,12 @@ fun CachePreferencesScreen(
                 BufferSettingsPreference(
                     preferences = preferences,
                     isFirstItem = true,
-                    isLastItem = true,
                     onClick = { viewModel.showDialog(CachePreferenceDialog.BufferSettingsDialog) },
+                )
+                RetryHttpStatusCodesPreference(
+                    retryStatusCodes = preferences.retryHttpStatusCodes,
+                    isLastItem = true,
+                    onClick = { viewModel.showDialog(CachePreferenceDialog.RetryHttpStatusCodesDialog) },
                 )
             }
         }
@@ -167,6 +173,17 @@ fun CachePreferencesScreen(
                                 rangeStreamChunkSizeBytes = chunkBytes,
                                 segmentConcurrentDownloads = concurrency,
                             )
+                            viewModel.hideDialog()
+                        },
+                        onDismissClick = viewModel::hideDialog,
+                    )
+                }
+
+                CachePreferenceDialog.RetryHttpStatusCodesDialog -> {
+                    RetryHttpStatusCodesDialog(
+                        retryStatusCodes = preferences.retryHttpStatusCodes,
+                        onDoneClick = { statusCodes ->
+                            viewModel.updateRetryHttpStatusCodes(statusCodes)
                             viewModel.hideDialog()
                         },
                         onDismissClick = viewModel::hideDialog,
@@ -228,6 +245,25 @@ private fun BufferSettingsPreference(
         title = stringResource(R.string.buffer_settings),
         description = "${minSec}s-${maxSec}s, ${chunkKb}KB, x$concurrency",
         icon = NextIcons.Settings,
+        isFirstItem = isFirstItem,
+        isLastItem = isLastItem,
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun RetryHttpStatusCodesPreference(
+    retryStatusCodes: List<Int>,
+    isFirstItem: Boolean = false,
+    isLastItem: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val description = formatRetryHttpStatusCodes(retryStatusCodes)
+        .ifBlank { stringResource(R.string.retry_http_status_codes_desc) }
+    ClickablePreferenceItem(
+        title = stringResource(R.string.retry_http_status_codes),
+        description = description,
+        icon = NextIcons.Replay,
         isFirstItem = isFirstItem,
         isLastItem = isLastItem,
         onClick = onClick,
@@ -316,6 +352,43 @@ private fun BufferSettingsDialog(
                 unit = "",
                 value = segmentConcurrentDownloadsText,
                 onValueChange = { segmentConcurrentDownloadsText = it },
+            )
+        },
+    )
+}
+
+@Composable
+private fun RetryHttpStatusCodesDialog(
+    retryStatusCodes: List<Int>,
+    onDoneClick: (List<Int>) -> Unit,
+    onDismissClick: () -> Unit,
+) {
+    var statusCodesText by remember { mutableStateOf(formatRetryHttpStatusCodes(retryStatusCodes)) }
+
+    NextDialogWithDoneCancelAndResetButtons(
+        title = stringResource(R.string.retry_http_status_codes),
+        onDoneClick = {
+            onDoneClick(parseRetryHttpStatusCodes(statusCodesText))
+        },
+        onResetClick = {
+            statusCodesText = ""
+        },
+        onDismissClick = onDismissClick,
+        content = {
+            OutlinedTextField(
+                value = statusCodesText,
+                onValueChange = { new ->
+                    if (new.all { it.isDigit() || it == ',' || it.isWhitespace() }) {
+                        statusCodesText = new
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                label = { Text(text = stringResource(R.string.retry_http_status_codes_input)) },
+                supportingText = { Text(text = stringResource(R.string.retry_http_status_codes_help)) },
+                singleLine = false,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
         },
     )

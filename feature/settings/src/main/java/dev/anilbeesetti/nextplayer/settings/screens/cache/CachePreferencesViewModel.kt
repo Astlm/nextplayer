@@ -65,6 +65,14 @@ class CachePreferencesViewModel @Inject constructor(
             }
         }
     }
+
+    fun updateRetryHttpStatusCodes(statusCodes: List<Int>) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(retryHttpStatusCodes = statusCodes)
+            }
+        }
+    }
 }
 
 data class CachePreferencesUIState(
@@ -74,6 +82,7 @@ data class CachePreferencesUIState(
 sealed interface CachePreferenceDialog {
     object CacheClearPolicyDialog : CachePreferenceDialog
     object BufferSettingsDialog : CachePreferenceDialog
+    object RetryHttpStatusCodesDialog : CachePreferenceDialog
 }
 
 sealed interface CachePreferencesEvent {

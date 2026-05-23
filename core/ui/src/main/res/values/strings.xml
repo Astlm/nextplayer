@@ -75,6 +75,10 @@
     <string name="clear_cache">Clear cache</string>
     <string name="range_stream_chunk_size">Range chunk size</string>
     <string name="segment_concurrent_downloads">Segment concurrent downloads</string>
+    <string name="retry_http_status_codes">Retry HTTP status codes</string>
+    <string name="retry_http_status_codes_desc">No HTTP status codes will be retried</string>
+    <string name="retry_http_status_codes_input">Status codes</string>
+    <string name="retry_http_status_codes_help">Enter comma or space separated HTTP status codes, for example 401, 403, 500.</string>
     <string name="milliseconds">%1$s ms</string>
     <string name="megabytes">%1$s MB</string>
     <string name="min_buffer">Minimum buffer</string>
