@@ -4,35 +4,29 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import dev.anilbeesetti.nextplayer.core.database.dao.DirectoryDao
-import dev.anilbeesetti.nextplayer.core.database.dao.MediumDao
+import dev.anilbeesetti.nextplayer.core.database.dao.HiddenVideoDao
 import dev.anilbeesetti.nextplayer.core.database.dao.MediumStateDao
-import dev.anilbeesetti.nextplayer.core.database.entities.AudioStreamInfoEntity
-import dev.anilbeesetti.nextplayer.core.database.entities.DirectoryEntity
-import dev.anilbeesetti.nextplayer.core.database.entities.MediumEntity
+import dev.anilbeesetti.nextplayer.core.database.dao.NetworkConnectionDao
+import dev.anilbeesetti.nextplayer.core.database.entities.HiddenVideoEntity
 import dev.anilbeesetti.nextplayer.core.database.entities.MediumStateEntity
-import dev.anilbeesetti.nextplayer.core.database.entities.SubtitleStreamInfoEntity
-import dev.anilbeesetti.nextplayer.core.database.entities.VideoStreamInfoEntity
+import dev.anilbeesetti.nextplayer.core.database.entities.NetworkConnectionEntity
 
 @Database(
     entities = [
-        DirectoryEntity::class,
-        MediumEntity::class,
         MediumStateEntity::class,
-        VideoStreamInfoEntity::class,
-        AudioStreamInfoEntity::class,
-        SubtitleStreamInfoEntity::class,
+        HiddenVideoEntity::class,
+        NetworkConnectionEntity::class,
     ],
-    version = 5,
+    version = 8,
     exportSchema = true,
 )
 abstract class MediaDatabase : RoomDatabase() {
 
-    abstract fun mediumDao(): MediumDao
-
     abstract fun mediumStateDao(): MediumStateDao
 
-    abstract fun directoryDao(): DirectoryDao
+    abstract fun hiddenVideoDao(): HiddenVideoDao
+
+    abstract fun networkConnectionDao(): NetworkConnectionDao
 
     companion object {
         const val DATABASE_NAME = "media_db"
@@ -168,8 +162,10 @@ abstract class MediaDatabase : RoomDatabase() {
 
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE `media_state` ADD COLUMN `video_group_index` INTEGER")
-                db.execSQL("ALTER TABLE `media_state` ADD COLUMN `video_track_index` INTEGER")
+                db.addColumnIfMissing("ALTER TABLE `media_state` ADD COLUMN `video_group_index` INTEGER")
+                db.addColumnIfMissing("ALTER TABLE `media_state` ADD COLUMN `video_track_index` INTEGER")
+                db.addColumnIfMissing("ALTER TABLE `media_state` ADD COLUMN `subtitle_delay` INTEGER NOT NULL DEFAULT 0")
+                db.addColumnIfMissing("ALTER TABLE `media_state` ADD COLUMN `subtitle_speed` REAL NOT NULL DEFAULT 1")
             }
         }
 
@@ -179,6 +175,74 @@ abstract class MediaDatabase : RoomDatabase() {
                 db.addColumnIfMissing("ALTER TABLE `media_state` ADD COLUMN `video_track_index` INTEGER")
                 db.addColumnIfMissing("ALTER TABLE `media_state` ADD COLUMN `subtitle_delay` INTEGER NOT NULL DEFAULT 0")
                 db.addColumnIfMissing("ALTER TABLE `media_state` ADD COLUMN `subtitle_speed` REAL NOT NULL DEFAULT 1")
+                db.execSQL("DROP TABLE IF EXISTS `directories`")
+                db.execSQL("DROP TABLE IF EXISTS `media`")
+                db.execSQL("DROP TABLE IF EXISTS `audio_stream_info`")
+                db.execSQL("DROP TABLE IF EXISTS `video_stream_info`")
+                db.execSQL("DROP TABLE IF EXISTS `subtitle_stream_info`")
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 本地 fork 与上游曾各自发布过不同结构的 v5，先收敛为统一结构。
+                db.addColumnIfMissing("ALTER TABLE `media_state` ADD COLUMN `video_group_index` INTEGER")
+                db.addColumnIfMissing("ALTER TABLE `media_state` ADD COLUMN `video_track_index` INTEGER")
+                db.execSQL("DROP TABLE IF EXISTS `directories`")
+                db.execSQL("DROP TABLE IF EXISTS `media`")
+                db.execSQL("DROP TABLE IF EXISTS `audio_stream_info`")
+                db.execSQL("DROP TABLE IF EXISTS `video_stream_info`")
+                db.execSQL("DROP TABLE IF EXISTS `subtitle_stream_info`")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `hidden_video` (
+                        `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        `vault_path` TEXT NOT NULL,
+                        `original_path` TEXT NOT NULL,
+                        `display_name` TEXT NOT NULL,
+                        `duration` INTEGER NOT NULL DEFAULT 0,
+                        `size` INTEGER NOT NULL DEFAULT 0,
+                        `width` INTEGER NOT NULL DEFAULT 0,
+                        `height` INTEGER NOT NULL DEFAULT 0,
+                        `hidden_at` INTEGER NOT NULL
+                    )
+                    """,
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_hidden_video_vault_path` ON `hidden_video` (`vault_path`)
+                    """,
+                )
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Column definitions (order, types, nullability) must match the schema Room
+                // generates from NetworkConnectionEntity exactly, or migration validation fails.
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `network_connection` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `protocol` TEXT NOT NULL,
+                        `host` TEXT NOT NULL,
+                        `port` INTEGER,
+                        `path` TEXT NOT NULL,
+                        `username` TEXT NOT NULL,
+                        `password` TEXT NOT NULL,
+                        `use_https` INTEGER NOT NULL,
+                        `created_at` INTEGER NOT NULL
+                    )
+                    """,
+                )
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.addColumnIfMissing("ALTER TABLE `media_state` ADD COLUMN `video_group_index` INTEGER")
+                db.addColumnIfMissing("ALTER TABLE `media_state` ADD COLUMN `video_track_index` INTEGER")
             }
         }
     }

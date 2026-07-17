@@ -45,5 +45,5 @@ fastlane/test_output
 vendor/
 .bundle/
 .kotlin
-
 AGENTS.md
+.junie
